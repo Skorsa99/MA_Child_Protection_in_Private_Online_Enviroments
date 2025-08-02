@@ -1,0 +1,8 @@
+# Ignore Python virtual environments
+venv/
+
+# Ignore data folder
+data/
+
+# Ignore private section of src
+src/private/
