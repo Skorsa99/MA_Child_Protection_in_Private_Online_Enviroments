@@ -7,6 +7,12 @@ import requests
 from html import unescape
 from urllib.parse import urlparse
 
+from custom_logging import log_data_collection, image_tally
+
+# --- Allowed media types (centralized) ---
+ALLOWED_IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+ALLOWED_VIDEO_EXTS = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.3gp', '.mpeg', '.mpg', '.ogv'}
+ALLOWED_EXTS = ALLOWED_IMAGE_EXTS | ALLOWED_VIDEO_EXTS
 
 # Variables
 dotenv.load_dotenv("src/private/private.env")
@@ -16,14 +22,9 @@ reddit_client_id = os.getenv("reddit_client_id")
 reddit_api_key = os.getenv("reddit_api_key")
 reddit_user_agent = 'script:online_child_protection:v1.0 (by u/Practical_Year_7524)'
 
+def collect_data(SUBREDDIT, SAVE_DIR):
+    MAX_ITEMS = 1000  # Maximal zu ladende Beiträge (paginierend)
 
-# === Ziel-Subreddit und Speicherort ===
-CATEGORY = 'explicit' # explicit | safe | empty
-SUBREDDIT = 'Nudes'
-MAX_ITEMS = 1000  # Maximal zu ladende Beiträge (paginierend)
-SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
-
-def collect_data():
     # Validate required credentials early to fail fast with a clear message
     if not all([reddit_username, reddit_password, reddit_client_id, reddit_api_key]):
         raise RuntimeError("Missing Reddit credentials in src/private/private.env")
@@ -83,7 +84,7 @@ def collect_data():
 
 
     # === Schritt 3: Filtere Medien (Einzelbild, Galerie, Video) und lade sie herunter ===
-    allowed_ext = {'.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov'}
+    allowed_ext = ALLOWED_EXTS
     downloaded_urls = set()
 
     post_counter = 0
@@ -105,16 +106,15 @@ def collect_data():
                 continue
 
             try:
-                video_exts = {'.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.3gp', '.mpeg', '.mpg', '.ogv'}
+                video_exts = ALLOWED_VIDEO_EXTS
                 media = requests.get(media_url, stream=True, timeout=30)
                 media.raise_for_status()
 
+                # Build filename safely from URL path
+                stem = os.path.splitext(os.path.basename(path))[0]
                 if ext in video_exts:
-                    basename = filename.split('.')[0]
-                    print(basename)
-                    random_suffix = random.randint(000000, 999999)
-                    filename = f"{basename}_{random_suffix}.{ext.lstrip('.')}"
-                    print(filename)
+                    suffix = f"{random.randint(0, 999_999):06d}"
+                    filename = os.path.join(SAVE_DIR, f"{stem}_{suffix}{ext}")
                 else:
                     filename = os.path.join(SAVE_DIR, os.path.basename(path))
 
@@ -123,11 +123,11 @@ def collect_data():
                         f.write(chunk)
 
                 image_counter += 1
-                print(f"Post: {str(post_counter)} | Media: {str(image_counter)}")
+                print(f"Subreddit: {SUBREDDIT} | Post: {str(post_counter)} | Media: {str(image_counter)}")
             except Exception as e:
                 print(f"Failed: {media_url} ({e})")
 
-    print(f"Completed download of {post_counter} posts with {image_counter} media files.")
+    return image_counter, post_counter
 
 def _parse_rate_headers(hdrs):
     def _to_float(val, default):
@@ -139,7 +139,6 @@ def _parse_rate_headers(hdrs):
     remaining = _to_float(hdrs.get('x-ratelimit-remaining'), 60.0)
     reset = _to_float(hdrs.get('x-ratelimit-reset'), 60.0)
     return used, remaining, reset
-
 
 def _adaptive_sleep(hdrs):
     """Sleep based on Reddit rate-limit headers to avoid 429 and maximize throughput.
@@ -157,46 +156,60 @@ def _adaptive_sleep(hdrs):
     time.sleep(base_delay + random.uniform(0.05, 0.15))
 
 def extract_media_urls(data):
-    urls = set()
+    from html import unescape
+    from urllib.parse import urlparse
+    import os
 
-    # 1) Direct URL overrides (typischer Bild-/Video-Post)
-    direct = data.get('url_overridden_by_dest') or data.get('url')
-    if direct:
-        urls.add(direct)
+    def _norm(u):
+        if not u: return None
+        u = unescape(u).replace('&amp;', '&')
+        p = urlparse(u)
+        # de-dupe by host+path; ignore query params (preview size variants)
+        return p._replace(query="").geturl()
 
-    # 2) Reddit Gallery (mehrere Bilder in einem Post)
-    if data.get('is_gallery') and data.get('media_metadata'):
-        gallery_items = (data.get('gallery_data') or {}).get('items', [])
-        for it in gallery_items:
-            media_id = it.get('media_id') or it.get('id')
-            meta = data['media_metadata'].get(media_id, {}) if media_id else {}
-            if not meta:
-                continue
-            # Bevorzugt die volle Auflösung unter 's'
-            s = meta.get('s') if isinstance(meta.get('s'), dict) else None
-            if s:
-                u = s.get('u') or s.get('gif') or s.get('mp4')
-                if u:
-                    urls.add(unescape(u).replace('&amp;', '&'))
+    urls, seen = [], set()
 
-    # 3) Reddit-Video (fallback MP4)
+    def _add(u):
+        u = _norm(u)
+        if u and u not in seen:
+            seen.add(u)
+            urls.append(u)
+
+    # 1) Reddit video → return only the MP4 (no preview)
     rv = (data.get('secure_media') or {}).get('reddit_video')
     if not rv:
         rv = (data.get('preview') or {}).get('reddit_video_preview')
-    if rv and isinstance(rv, dict):
-        fbu = rv.get('fallback_url')
-        if fbu:
-            urls.add(fbu)
+    if isinstance(rv, dict) and rv.get('fallback_url'):
+        _add(rv['fallback_url'])
+        return urls
 
-    # 4) Preview-Bilder (auch wenn kein sauberer Dateiname in der URL steht)
+    # 2) Gallery → return gallery items (full-res)
+    if data.get('is_gallery') and data.get('media_metadata'):
+        items = (data.get('gallery_data') or {}).get('items', [])
+        for it in items:
+            mid = it.get('media_id') or it.get('id')
+            meta = data['media_metadata'].get(mid, {}) if mid else {}
+            s = meta.get('s') if isinstance(meta.get('s'), dict) else None
+            _add(s.get('u') or s.get('gif') or s.get('mp4') if s else None)
+        return urls
+
+    # 3) Single direct media (prefer actual media extensions)
+    direct = data.get('url_overridden_by_dest') or data.get('url')
+    if direct:
+        path_ext = os.path.splitext(urlparse(direct).path)[1].lower()
+        allowed_exts = {'.jpg', '.jpeg', '.png', '.gif',
+                        '.mp4', '.mov', '.webm', '.mkv', '.avi',
+                        '.m4v', '.3gp', '.mpeg', '.mpg', '.ogv'}
+        if path_ext in allowed_exts:
+            _add(direct)
+            return urls
+
+    # 4) Fallback: use preview only if nothing better was found
     preview = data.get('preview') or {}
-    images = preview.get('images') or []
-    for img in images:
-        src = (img.get('source') or {}).get('url')
-        if src:
-            urls.add(unescape(src).replace('&amp;', '&'))
+    for img in (preview.get('images') or []):
+        _add((img.get('source') or {}).get('url'))
 
-    return list(urls)
+    return urls
 
 def convert_videos(folder_path):
     """
@@ -220,6 +233,8 @@ def convert_videos(folder_path):
         return candidate
 
     saved = 0
+    error_rate = 0
+
     for entry in sorted(os.listdir(folder_path)):
         src_path = os.path.join(folder_path, entry)
         if not os.path.isfile(src_path):
@@ -266,6 +281,7 @@ def convert_videos(folder_path):
             if ret and frame is not None:
                 if os.path.exists(out_path):
                     print(f"Bild existiert bereits: {out_path}")
+                    error_rate += 1
                     # Video löschen und überspringen
                     continue
                 cv2.imwrite(out_path, frame)
@@ -273,12 +289,62 @@ def convert_videos(folder_path):
                 saved += 1
             else:
                 print(f"Fehler beim Auslesen: {src_path}")
+                error_rate += 1
         finally:
             # Datei nach Verarbeitung oder Fehler löschen
             os.remove(src_path)
 
     print(f"Fertig. {saved} JPG-Dateien in '{folder_path}' erzeugt.")
 
+    return saved, error_rate
+
 if __name__ == "__main__":
-    collect_data()
-    convert_videos(SAVE_DIR)
+    # CATEGORY = explicit | safe | empty
+    subreddits = [
+        ["Nudes", "explicit"],
+        ["Nudes_Heaven", "explicit"],
+        ["NudeSport", "explicit"],
+        ["Nudeshoots", "explicit"],
+        ["ChangingRooms", "explicit"],
+        ["Flashing", "explicit"],
+        ["Flashingmilfs", "explicit"],
+        ["FlashingAndFlauning", "explicit"],
+        ["FlashingGirls", "explicit"],
+        ["malenudes", "explicit"],
+        ["MalenudesEU", "explicit"],
+        ["MaleNudeInspiration", "explicit"],
+        ["Bulges", "explicit"],
+        ["Musk4Musk", "explicit"],
+        ["GaybrosGoneWild", "explicit"],
+        ["DarkAngels", "explicit"],
+        ["blackmale", "explicit"],
+        ["blackcock", "explicit"],
+        ["sexyselfie", "explicit"],
+        ["AsianNSFW", "explicit"],
+        ["BigAsianCock", "explicit"],
+        ["topless", "explicit"],
+        ["ToplessInPublic", "explicit"],
+        ["MaleUnderware", "explicit"],
+        ["OldGuysRule", "explicit"],
+        ["GrannyOldWoman", "explicit"]
+    ]
+
+    subreddits_length = len(subreddits)
+    current_subreddit = 0
+
+    for SUBREDDIT, CATEGORY in subreddits:
+        SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
+
+        current_subreddit += 1
+
+        image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)
+        saved, error_rate = convert_videos(SAVE_DIR)
+
+        image_counter = image_counter - error_rate
+
+        image_tally(image_counter)
+        
+        image_tally_variable = image_tally(image_counter)
+        end_message = f"Completed download of {post_counter} posts, and stored {image_counter} media files. Updated tally: {image_tally_variable}"
+        print(end_message)
+        log_data_collection(end_message)
