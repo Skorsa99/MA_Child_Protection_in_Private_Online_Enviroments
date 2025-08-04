@@ -110,13 +110,13 @@ def collect_data(SUBREDDIT, SAVE_DIR):
                 media = requests.get(media_url, stream=True, timeout=30)
                 media.raise_for_status()
 
-                # Build filename safely from URL path
-                stem = os.path.splitext(os.path.basename(path))[0]
-                if ext in video_exts:
-                    suffix = f"{random.randint(0, 999_999):06d}"
-                    filename = os.path.join(SAVE_DIR, f"{stem}_{suffix}{ext}")
-                else:
-                    filename = os.path.join(SAVE_DIR, os.path.basename(path))
+                filename = build_filename(media_url, SAVE_DIR)
+                stem, _ = os.path.splitext(os.path.basename(filename))
+                jpg_target = os.path.join(SAVE_DIR, f"{stem}.jpg")
+
+                # Wenn das Zielbild bereits existiert: gar nicht erst downloaden
+                if ext in ALLOWED_VIDEO_EXTS and os.path.exists(jpg_target):
+                    continue
 
                 with open(filename, 'wb') as f:
                     for chunk in media.iter_content(chunk_size=8192):
@@ -210,6 +210,28 @@ def extract_media_urls(data):
         _add((img.get('source') or {}).get('url'))
 
     return urls
+
+def build_filename(media_url: str, save_dir: str) -> str:
+    p = urlparse(media_url)
+    host = p.netloc.lower()
+    base = os.path.basename(p.path)        # e.g. "DASH_720.mp4" oder "abc123.jpg"
+    stem, ext = os.path.splitext(base)
+
+    if 'v.redd.it' in host:
+        # /<asset_id>/DASH_720.mp4  -> asset_id = erster Pfadteil
+        parts = [seg for seg in p.path.split('/') if seg]
+        asset_id = parts[0] if parts else 'vid'
+        # name = f"{asset_id}_{stem}{ext}"
+        name = f"{asset_id}{ext}" # keine Duplikate mit verscheidenen video-Qualitäten
+    elif 'i.redd.it' in host:
+        # i.redd.it ist bereits eindeutig
+        name = f"{stem}{ext}"
+    else:
+        # Fallback für externe Hosts
+        host_key = host.replace('.', '-')
+        name = f"{host_key}_{stem}{ext}"
+
+    return os.path.join(save_dir, name)
 
 def convert_videos(folder_path):
     """
