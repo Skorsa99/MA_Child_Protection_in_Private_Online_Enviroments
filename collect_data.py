@@ -364,9 +364,7 @@ if __name__ == "__main__":
 
         image_counter = image_counter - error_rate
 
-        image_tally(image_counter)
-        
-        image_tally_variable = image_tally(image_counter)
+        image_tally_variable = image_tally(image_counter, CATEGORY)
         end_message = f"Completed download of {post_counter} posts, and stored {image_counter} media files. Updated tally: {image_tally_variable}"
         print(end_message)
         log_data_collection(end_message)

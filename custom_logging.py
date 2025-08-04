@@ -18,7 +18,7 @@ def log_data_collection(message):
     except Exception as e:
         return
     
-def image_tally(number_images):
+def image_tally(number_images, category):
     # Ensure the directory exists
     file_path = 'logs/image_tally.json'
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
@@ -28,10 +28,10 @@ def image_tally(number_images):
         with open(file_path, 'r') as json_file:
             data = json.load(json_file)
     except (FileNotFoundError, json.JSONDecodeError):
-        data = {"image_count": 0}
+        data = {f"image_count_{category}": 0}
 
     # Update the image count
-    data["image_count"] += number_images
+    data[f"image_count_{category}"] += number_images
 
     # Write the updated data back to the file
     try:
@@ -39,6 +39,6 @@ def image_tally(number_images):
             json.dump(data, json_file)
     except Exception as e:
         print(f"Error writing to image tally file: {e}")
-    
-    updated_tally = data["image_count"]
+
+    updated_tally = data[f"image_count_{category}"]
     return updated_tally
