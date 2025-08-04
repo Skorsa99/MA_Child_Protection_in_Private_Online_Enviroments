@@ -107,7 +107,12 @@ def collect_data(SUBREDDIT, SAVE_DIR):
 
             try:
                 video_exts = ALLOWED_VIDEO_EXTS
-                media = requests.get(media_url, stream=True, timeout=30)
+                media = requests.get(
+                    media_url,
+                    stream=True,
+                    timeout=30,
+                    headers={"User-Agent": reddit_user_agent, "Referer": "https://www.reddit.com/"},
+                )
                 media.raise_for_status()
 
                 filename = build_filename(media_url, SAVE_DIR)
@@ -160,20 +165,21 @@ def extract_media_urls(data):
     from urllib.parse import urlparse
     import os
 
-    def _norm(u):
-        if not u: return None
-        u = unescape(u).replace('&amp;', '&')
+    def _dedupe_key(u: str):
         p = urlparse(u)
-        # de-dupe by host+path; ignore query params (preview size variants)
-        return p._replace(query="").geturl()
+        # de-dupe by host+path only (ignore query), but KEEP query for the actual download
+        return (p.netloc.lower(), p.path)
 
     urls, seen = [], set()
 
     def _add(u):
-        u = _norm(u)
-        if u and u not in seen:
-            seen.add(u)
-            urls.append(u)
+        if not u:
+            return
+        raw = unescape(u).replace('&amp;', '&')  # keep full URL incl. query
+        key = _dedupe_key(raw)
+        if key not in seen:
+            seen.add(key)
+            urls.append(raw)
 
     # 1) Reddit video → return only the MP4 (no preview)
     rv = (data.get('secure_media') or {}).get('reddit_video')
@@ -355,7 +361,7 @@ if __name__ == "__main__":
 
     subreddits = [
         # --- Explicit ---
-        ["Nudes", "explicit"],
+        # ["Nudes", "explicit"],
         ["Nudes_Heaven", "explicit"],
         ["NudeSport", "explicit"],
         ["Nudeshoots", "explicit"],
