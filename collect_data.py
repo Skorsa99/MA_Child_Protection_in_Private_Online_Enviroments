@@ -23,7 +23,7 @@ reddit_api_key = os.getenv("reddit_api_key")
 reddit_user_agent = 'script:online_child_protection:v1.0 (by u/Practical_Year_7524)'
 
 def collect_data(SUBREDDIT, SAVE_DIR):
-    MAX_ITEMS = 1000  # Maximal zu ladende Beiträge (paginierend)
+    MAX_ITEMS = 10000  # Maximal zu ladende Beiträge (paginierend)
 
     # Validate required credentials early to fail fast with a clear message
     if not all([reddit_username, reddit_password, reddit_client_id, reddit_api_key]):
@@ -361,16 +361,16 @@ if __name__ == "__main__":
 
     subreddits = [
         # --- Explicit ---
-        # ["Nudes", "explicit"],
-        ["Nudes_Heaven", "explicit"],
-        ["NudeSport", "explicit"],
-        ["Nudeshoots", "explicit"],
-        ["ChangingRooms", "explicit"],
-        ["Flashing", "explicit"],
-        ["Flashingmilfs", "explicit"],
-        ["FlashingAndFlauning", "explicit"],
-        ["FlashingGirls", "explicit"],
-        ["malenudes", "explicit"],
+        #["Nudes", "explicit"],
+        #["Nudes_Heaven", "explicit"],
+        #["NudeSports", "explicit"],
+        #["Nudeshoots", "explicit"],
+        #["ChangingRooms", "explicit"],
+        #["Flashing", "explicit"],
+        #["Flashingmilfs", "explicit"],
+        ["FlashingAndFlaunting", "explicit"],
+        #["FlashingGirls", "explicit"],
+        ["malesnude", "explicit"],
         ["MalenudesEU", "explicit"],
         ["MaleNudeInspiration", "explicit"],
         ["Bulges", "explicit"],
@@ -384,10 +384,10 @@ if __name__ == "__main__":
         ["BigAsianCock", "explicit"],
         ["topless", "explicit"],
         ["ToplessInPublic", "explicit"],
-        ["MaleUnderware", "explicit"],
+        ["MaleUnderwear", "explicit"],
         ["OldGuysRule", "explicit"],
         ["GrannyOldWoman", "explicit"],
-        ["pornstartsinswimwear", "explicit"],
+        ["pornstarsinswimwear", "explicit"],
         ["swimbrief", "explicit"],
 
         # --- Safe ---
@@ -414,7 +414,7 @@ if __name__ == "__main__":
 
         # --- Empty ---
         ["InteriorDesign", "empty"],
-        ["AmatureRoomPorn", "empty"],
+        ["AmateurRoomPorn", "empty"],
         ["Workspaces", "empty"],
         ["EarthPorn", "empty"],
         ["SkyPorn", "empty"],
@@ -430,6 +430,6 @@ if __name__ == "__main__":
         image_counter = image_counter - error_rate
 
         image_tally_variable = image_tally(image_counter, CATEGORY)
-        end_message = f"Completed download of {post_counter} posts, and stored {image_counter} media files. Updated tally: {image_tally_variable}"
+        end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
         print(end_message)
         log_data_collection(end_message)
