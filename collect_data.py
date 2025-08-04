@@ -322,6 +322,7 @@ def convert_videos(folder_path):
 
 if __name__ == "__main__":
     # CATEGORY = explicit | safe | empty
+    """
     subreddits = [
         ["Nudes", "explicit"],
         ["Nudes_Heaven", "explicit"],
@@ -350,14 +351,72 @@ if __name__ == "__main__":
         ["OldGuysRule", "explicit"],
         ["GrannyOldWoman", "explicit"]
     ]
+    """
 
-    subreddits_length = len(subreddits)
-    current_subreddit = 0
+    subreddits = [
+        # --- Explicit ---
+        ["Nudes", "explicit"],
+        ["Nudes_Heaven", "explicit"],
+        ["NudeSport", "explicit"],
+        ["Nudeshoots", "explicit"],
+        ["ChangingRooms", "explicit"],
+        ["Flashing", "explicit"],
+        ["Flashingmilfs", "explicit"],
+        ["FlashingAndFlauning", "explicit"],
+        ["FlashingGirls", "explicit"],
+        ["malenudes", "explicit"],
+        ["MalenudesEU", "explicit"],
+        ["MaleNudeInspiration", "explicit"],
+        ["Bulges", "explicit"],
+        ["Musk4Musk", "explicit"],
+        ["GaybrosGoneWild", "explicit"],
+        ["DarkAngels", "explicit"],
+        ["blackmale", "explicit"],
+        ["blackcock", "explicit"],
+        ["sexyselfie", "explicit"],
+        ["AsianNSFW", "explicit"],
+        ["BigAsianCock", "explicit"],
+        ["topless", "explicit"],
+        ["ToplessInPublic", "explicit"],
+        ["MaleUnderware", "explicit"],
+        ["OldGuysRule", "explicit"],
+        ["GrannyOldWoman", "explicit"],
+        ["pornstartsinswimwear", "explicit"],
+        ["swimbrief", "explicit"],
+
+        # --- Safe ---
+        ["selfies", "safe"],
+        ["outfitoftheday", "safe"],
+        ["malehairadvice", "safe"],
+        ["selfie", "safe"],
+        ["Outfits", "safe"],
+        ["TodayIWore", "safe"],
+        ["MakeupAddiction", "safe"],
+        ["malefashion", "safe"],
+        ["malegrooming", "safe"],
+        ["beards", "safe"],
+        ["FreeCompliments", "safe"],
+        ["over60selfies", "safe"],
+        ["50something", "safe"],
+        ["40something", "safe"],
+        ["blackladies", "safe"],
+        ["FreeAIHeadshots", "safe"],
+        ["headshots", "safe"],
+        ["medicalillustration", "safe"],
+        ["anatomicalart", "safe"],
+        ["Homescreens", "safe"],
+
+        # --- Empty ---
+        ["InteriorDesign", "empty"],
+        ["AmatureRoomPorn", "empty"],
+        ["Workspaces", "empty"],
+        ["EarthPorn", "empty"],
+        ["SkyPorn", "empty"],
+        ["MyRoom", "empty"],
+    ]
 
     for SUBREDDIT, CATEGORY in subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
-
-        current_subreddit += 1
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)
         saved, error_rate = convert_videos(SAVE_DIR)
