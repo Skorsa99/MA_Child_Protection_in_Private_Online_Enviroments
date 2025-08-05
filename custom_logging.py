@@ -31,7 +31,8 @@ def image_tally(number_images, category):
         data = {f"image_count_{category}": 0}
 
     # Update the image count
-    data[f"image_count_{category}"] += number_images
+    key = f"image_count_{category}"
+    data[key] = data.get(key, 0) + number_images
 
     # Write the updated data back to the file
     try:
