@@ -23,7 +23,7 @@ reddit_api_key = os.getenv("reddit_api_key")
 reddit_user_agent = 'script:online_child_protection:v1.0 (by u/Practical_Year_7524)'
 
 def collect_data(SUBREDDIT, SAVE_DIR):
-    MAX_ITEMS = 20  # Maximal zu ladende Beiträge (paginierend)
+    MAX_ITEMS = 10000  # Maximal zu ladende Beiträge (paginierend)
 
     # Validate required credentials early to fail fast with a clear message
     if not all([reddit_username, reddit_password, reddit_client_id, reddit_api_key]):
