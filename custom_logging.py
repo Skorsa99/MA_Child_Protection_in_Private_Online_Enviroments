@@ -17,6 +17,22 @@ def log_data_collection(message):
             log_file.write(full_message)
     except Exception as e:
         return
+
+def log_data_filtering(message):
+    # Ensure the directory exists
+    file_path = 'logs/data_filtering.txt'
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    # Get a date-time string and format the log message
+    date_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    full_message = f"{date_time_str} | {message}\n"
+
+    # Open the log file in append mode and write the message
+    try:
+        with open(file_path, 'a') as log_file:
+            log_file.write(full_message)
+    except Exception as e:
+        return
     
 def image_tally(number_images, category):
     # Ensure the directory exists

@@ -23,7 +23,7 @@ reddit_api_key = os.getenv("reddit_api_key")
 reddit_user_agent = 'script:online_child_protection:v1.0 (by u/Practical_Year_7524)'
 
 def collect_data(SUBREDDIT, SAVE_DIR):
-    MAX_ITEMS = 10000  # Maximal zu ladende Beiträge (paginierend)
+    MAX_ITEMS = 20  # Maximal zu ladende Beiträge (paginierend)
 
     # Validate required credentials early to fail fast with a clear message
     if not all([reddit_username, reddit_password, reddit_client_id, reddit_api_key]):
@@ -119,15 +119,16 @@ def collect_data(SUBREDDIT, SAVE_DIR):
                 stem, _ = os.path.splitext(os.path.basename(filename))
                 jpg_target = os.path.join(SAVE_DIR, f"{stem}.jpg")
 
-                # Wenn das Zielbild bereits existiert: gar nicht erst downloaden
-                if ext in ALLOWED_VIDEO_EXTS and os.path.exists(jpg_target):
+                # Skip download if this media (original or its converted JPG) is already on disk
+                if os.path.exists(filename) or os.path.exists(jpg_target):
                     continue
 
                 with open(filename, 'wb') as f:
                     for chunk in media.iter_content(chunk_size=8192):
                         f.write(chunk)
 
-                image_counter += 1
+                    image_counter += 1
+                    
                 print(f"Subreddit: {SUBREDDIT} | Post: {str(post_counter)} | Media: {str(image_counter)}")
             except Exception as e:
                 print(f"Failed: {media_url} ({e})")
@@ -328,51 +329,20 @@ def convert_videos(folder_path):
 
 if __name__ == "__main__":
     # CATEGORY = explicit | safe | empty
-    """
     subreddits = [
+        # --- Explicit ---
         ["Nudes", "explicit"],
         ["Nudes_Heaven", "explicit"],
-        ["NudeSport", "explicit"],
+        ["NudeSports", "explicit"],
         ["Nudeshoots", "explicit"],
         ["ChangingRooms", "explicit"],
         ["Flashing", "explicit"],
         ["Flashingmilfs", "explicit"],
-        ["FlashingAndFlauning", "explicit"],
-        ["FlashingGirls", "explicit"],
-        ["malenudes", "explicit"],
-        ["MalenudesEU", "explicit"],
-        ["MaleNudeInspiration", "explicit"],
-        ["Bulges", "explicit"],
-        ["Musk4Musk", "explicit"],
-        ["GaybrosGoneWild", "explicit"],
-        ["DarkAngels", "explicit"],
-        ["blackmale", "explicit"],
-        ["blackcock", "explicit"],
-        ["sexyselfie", "explicit"],
-        ["AsianNSFW", "explicit"],
-        ["BigAsianCock", "explicit"],
-        ["topless", "explicit"],
-        ["ToplessInPublic", "explicit"],
-        ["MaleUnderware", "explicit"],
-        ["OldGuysRule", "explicit"],
-        ["GrannyOldWoman", "explicit"]
-    ]
-    """
-
-    subreddits = [
-        # --- Explicit ---
-        #["Nudes", "explicit"],
-        #["Nudes_Heaven", "explicit"],
-        #["NudeSports", "explicit"],
-        #["Nudeshoots", "explicit"],
-        #["ChangingRooms", "explicit"],
-        #["Flashing", "explicit"],
-        #["Flashingmilfs", "explicit"],
         ["FlashingAndFlaunting", "explicit"],
-        #["FlashingGirls", "explicit"],
+        ["FlashingGirls", "explicit"],
         ["malesnude", "explicit"],
         ["MalenudesEU", "explicit"],
-        ["MaleNudeInspiration", "explicit"],
+        ["MaleNudesInspiration", "explicit"],
         ["Bulges", "explicit"],
         ["Musk4Musk", "explicit"],
         ["GaybrosGoneWild", "explicit"],
@@ -386,9 +356,10 @@ if __name__ == "__main__":
         ["ToplessInPublic", "explicit"],
         ["MaleUnderwear", "explicit"],
         ["OldGuysRule", "explicit"],
-        ["GrannyOldWoman", "explicit"],
+        ["GrannyOldWomen", "explicit"],
         ["pornstarsinswimwear", "explicit"],
         ["swimbrief", "explicit"],
+        ["Femalenudesonly", "explicit"],
 
         # --- Safe ---
         ["selfies", "safe"],
@@ -420,6 +391,10 @@ if __name__ == "__main__":
         ["SkyPorn", "empty"],
         ["MyRoom", "empty"],
     ]
+    
+    temp_subreddits = [
+        ["Nudes", "TESTS"],
+    ]
 
     for SUBREDDIT, CATEGORY in subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
@@ -432,4 +407,6 @@ if __name__ == "__main__":
         image_tally_variable = image_tally(image_counter, CATEGORY)
         end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
         print(end_message)
-        log_data_collection(end_message)
+
+        if CATEGORY != "TESTS":
+            log_data_collection(end_message)
