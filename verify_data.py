@@ -39,7 +39,7 @@ def delete_image():
     try:
         # Move the image to deleted_pics directory instead of deleting
         orig_path = image_list[current_index]
-        new_path = Path(str(orig_path).replace("reddit_pics", "deleted_pics"))
+        new_path = Path(str(orig_path).replace("reddit_pics", "deleted_pics/varification"))
         new_path.parent.mkdir(parents=True, exist_ok=True)
         orig_path.rename(new_path)
         # Store for undo
