@@ -1,0 +1,22 @@
+2025-08-10 14:27:09 | [OK] Wrote manifests to: data/manifests/V001_80_10_10_per_source
+2025-08-10 15:03:10 | Started process for: V_0_001
+2025-08-10 15:08:46 | Started process for: V_0_001
+2025-08-10 15:08:47 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:11:59 | Started process for: V_0_001
+2025-08-10 15:11:59 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:18:33 | Started process for: V_0_001
+2025-08-10 15:18:34 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:19:06 | Started process for: V_0_001
+2025-08-10 15:19:07 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:23:00 | Started process for: V_0_001
+2025-08-10 15:23:01 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:25:26 | Started process for: V_0_001
+2025-08-10 15:25:26 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:25:47 | Started process for: V_0_001
+2025-08-10 15:25:48 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:25:48 | Model built | MobileNetV3Small alpha=0.75, img=160, dropout=0.2
+2025-08-10 15:25:48 | Checkpoint → models/V_0_001/best_model.keras
+2025-08-10 15:32:28 | Started process for: V_0_002
+2025-08-10 15:32:29 | Data loaded | train: 63815 val: 7986 test: 7967
+2025-08-10 15:32:29 | Model built | MobileNetV3Small alpha=0.75, img=160, dropout=0.2
+2025-08-10 15:32:29 | Checkpoint → models/V_0_002/best_model.keras
