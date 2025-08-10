@@ -328,40 +328,40 @@ def convert_videos(folder_path):
     return saved, error_rate
 
 if __name__ == "__main__":
-    # CATEGORY = explicit | safe | empty
+    # CATEGORY = unsafe | safe | empty
     subreddits = [
-        # --- Explicit ---
-        ["Nudes", "explicit"],
-        ["Nudes_Heaven", "explicit"],
-        ["NudeSports", "explicit"],
-        ["Nudeshoots", "explicit"],
-        ["ChangingRooms", "explicit"],
-        ["Flashing", "explicit"],
-        ["Flashingmilfs", "explicit"],
-        ["FlashingAndFlaunting", "explicit"],
-        ["FlashingGirls", "explicit"],
-        ["malesnude", "explicit"],
-        ["MalenudesEU", "explicit"],
-        ["MaleNudesInspiration", "explicit"],
-        ["Bulges", "explicit"],
-        ["Musk4Musk", "explicit"],
-        ["GaybrosGoneWild", "explicit"],
-        ["DarkAngels", "explicit"],
-        ["blackmale", "explicit"],
-        ["blackcock", "explicit"],
-        ["sexyselfie", "explicit"],
-        ["AsianNSFW", "explicit"],
-        ["BigAsianCock", "explicit"],
-        ["topless", "explicit"],
-        ["ToplessInPublic", "explicit"],
-        ["MaleUnderwear", "explicit"],
-        ["OldGuysRule", "explicit"],
-        ["GrannyOldWomen", "explicit"],
-        ["pornstarsinswimwear", "explicit"],
-        ["swimbrief", "explicit"],
-        ["Femalenudesonly", "explicit"],
+        # --- unsafe ---
+        ["Nudes", "unsafe"],
+        ["Nudes_Heaven", "unsafe"],
+        ["NudeSports", "unsafe"],
+        ["Nudeshoots", "unsafe"],
+        ["ChangingRooms", "unsafe"],
+        ["Flashing", "unsafe"],
+        ["Flashingmilfs", "unsafe"],
+        ["FlashingAndFlaunting", "unsafe"],
+        ["FlashingGirls", "unsafe"],
+        ["malesnude", "unsafe"],
+        ["MalenudesEU", "unsafe"],
+        ["MaleNudesInspiration", "unsafe"],
+        ["Bulges", "unsafe"],
+        ["Musk4Musk", "unsafe"],
+        ["GaybrosGoneWild", "unsafe"],
+        ["DarkAngels", "unsafe"],
+        ["blackmale", "unsafe"],
+        ["blackcock", "unsafe"],
+        ["sexyselfie", "unsafe"],
+        ["AsianNSFW", "unsafe"],
+        ["BigAsianCock", "unsafe"],
+        ["topless", "unsafe"],
+        ["ToplessInPublic", "unsafe"],
+        ["MaleUnderwear", "unsafe"],
+        ["OldGuysRule", "unsafe"],
+        ["GrannyOldWomen", "unsafe"],
+        ["pornstarsinswimwear", "unsafe"],
+        ["swimbrief", "unsafe"],
+        ["Femalenudesonly", "unsafe"],
 
-        # --- Safe ---
+        # --- safe ---
         ["selfies", "safe"],
         ["outfitoftheday", "safe"],
         ["malehairadvice", "safe"],
@@ -383,7 +383,7 @@ if __name__ == "__main__":
         ["anatomicalart", "safe"],
         ["Homescreens", "safe"],
 
-        # --- Empty ---
+        # --- empty ---
         ["InteriorDesign", "empty"],
         ["AmateurRoomPorn", "empty"],
         ["Workspaces", "empty"],

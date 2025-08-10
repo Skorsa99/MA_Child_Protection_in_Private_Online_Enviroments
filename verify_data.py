@@ -14,7 +14,7 @@ last_deleted = []
 
 @app.route('/')
 def frontend():
-    return send_from_directory("src", "verify_data.html") # FinderTag
+    return send_from_directory("src", "ui/verify_data.html") # FinderTag
 
 @app.route('/next')
 def get_next_image():
