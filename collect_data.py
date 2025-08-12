@@ -4,6 +4,8 @@ import time
 import dotenv
 import random
 import requests
+from PIL import Image
+from pathlib import Path
 from html import unescape
 from urllib.parse import urlparse
 
@@ -327,6 +329,40 @@ def convert_videos(folder_path):
 
     return saved, error_rate
 
+def convert_jpg_to_jpeg(folder_path, delete_original=False):
+    folder = Path(folder_path)
+    if not folder.is_dir():
+        raise NotADirectoryError(f"{folder_path} is not a valid directory")
+    
+    counter_c = 0
+    counter_d = 0
+    counter_e = 0
+
+    for jpg_file in folder.glob("*.jpg"):
+        jpeg_path = jpg_file.with_suffix(".jpeg")
+
+        try:
+            with Image.open(jpg_file) as img:
+                rgb_img = img.convert("RGB")  # Ensure standard RGB format
+                rgb_img.save(jpeg_path, "JPEG")
+            print(f"Converted: {jpg_file} -> {jpeg_path}")
+            counter_c += 1
+
+            if delete_original:
+                jpg_file.unlink()
+                print(f"Deleted original: {jpg_file}")
+                counter_d += 1
+
+        except Exception as e:
+            print(f"Error converting {jpg_file}: {e}")
+            try:
+                jpg_file.unlink()
+                counter_ed += 1
+            except Exception as ex:
+                counter_e += 1
+
+    return counter_c, counter_d, counter_ed, counter_e
+
 if __name__ == "__main__":
     # CATEGORY = unsafe | safe | empty
     subreddits = [
@@ -391,21 +427,21 @@ if __name__ == "__main__":
         ["SkyPorn", "empty"],
         ["MyRoom", "empty"],
     ]
-    
-    temp_subreddits = [
-        ["Nudes", "TESTS"],
-    ]
 
     for SUBREDDIT, CATEGORY in subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)
         saved, error_rate = convert_videos(SAVE_DIR)
+        counter_c, counter_d, counter_ed, counter_e = convert_jpg_to_jpeg(SAVE_DIR, delete_original=True)
 
-        image_counter = image_counter - error_rate
+        image_counter = image_counter - (error_rate + counter_ed + counter_e)
 
         image_tally_variable = image_tally(image_counter, CATEGORY)
-        end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
+        if counter_e > 0:
+            end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files [with {counter_e} unhandled errors]. Updated tally: {image_tally_variable}"
+        else:
+            end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
         print(end_message)
 
         if CATEGORY != "TESTS":

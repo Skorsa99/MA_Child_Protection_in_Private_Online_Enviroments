@@ -68,7 +68,7 @@ def log_data_manifest(message):
 
 def log_data_training(message):
     # Ensure the directory exists
-    file_path = 'logs/manifest_creation.txt'
+    file_path = 'logs/train_model.txt'
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
     # Get a date-time string and format the log message

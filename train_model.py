@@ -1,461 +1,407 @@
-
-
-#!/usr/bin/env python3
-"""
-Train a lightweight 3-class CNN for on-device (browser) inference.
-
-Targets:
-- Classes: ["unsafe", "safe", "empty"]
-- Extremely lightweight → MobileNetV3Small with width multiplier (alpha)
-- Export to TensorFlow.js for running in the browser
-- Uses JSONL manifest produced by create_manifest.py
-
-Expected JSONL fields per line:
-  {"path": "unsafe/source/img.jpg", "label": "unsafe", "label_id": 0, "source": "source", "split": "train"}
-
-Usage:
-  Just set the CONFIG section below and run:
-    python train_model.py
-
-Outputs:
-  - ./exports/keras/best_model.keras          (Keras saved model)
-  - ./exports/tfjs/                           (TensorFlow.js model.json + weights)
-  - ./exports/history.json                    (training curves)
-  - ./exports/metrics.json                    (eval metrics)
-
-Notes:
-  - If tensorflowjs is not installed, TF.js export is skipped with a hint.
-  - You can tweak alpha/img_size/augments to trade accuracy vs. size/speed.
-"""
-
-from __future__ import annotations
-
-import json
-import math
-import os
-from pathlib import Path
-from collections import Counter
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
-import numpy as np, tensorflow as tf
-
+import matplotlib
 import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+import tensorflowjs as tfjs
+import os, json, math, re, csv
+from collections import Counter
+import matplotlib.pyplot as plt
+from PIL import Image, ImageFile
+from typing import Dict, List, Tuple, Any, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tensorflow.keras.applications.efficientnet import preprocess_input
+
 
 from custom_logging import log_data_training
 
+matplotlib.use("Agg")  # headless
 
-# =====================
-# CONFIG
-# =====================
 
-# Dataset root the manifest paths are relative to
-DATASET_ROOT = Path("data/reddit_pics")
+# -----------------------------------------------------------------------------------------------------------------------------------
+# - Config --------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+MAIN_VERSION = 0
 
-# Path to the manifest.jsonl to use (versioned folder supported). Adjust as needed.
-MANIFEST_PATH = Path("data/manifests/V001_80_10_10_per_source/manifest.jsonl")
+MANIFEST_PATH = "data/manifests/V002_80_10_10_per_source/manifest.jsonl" # Holds the Path to the manifest
+BASE_PATH = "data/reddit_pics" # Holds the Path to the basefolder that contains the image data
+ACCEPTED_EXTS = (".jpeg", ".png", ".bmp")  # ← no .webp
 
-# Class names in label_id order
-CLASS_NAMES = ["unsafe", "safe", "empty"]
-NUM_CLASSES = len(CLASS_NAMES)
+IMG_SIZE         = 224                  # Size of each image (squared)
+IMAGE_NORMALIZER = "resize"             # Different options for image normalization: "resize", "crop", "bars"
+EPOCHS           = 1 # 10
+FINETUNE_EPOCHS  = 1 # 5
+BATCH_SIZE       = 64                   # Number of Samples per Batches
+BASE_LR          = 1e-4
+FINE_TUNE_LR     = 1e-5
+DROPOUT          = 0.2
+UNFREEZE_FROM    = -20                  # last N layers of the base model
+PATIENCE         = 3                    # early stopping
+LABEL_SMOOTHING  = 0.0                  # e.g. 0.05 if you want it
+SEED             = 42                   # Seed for reproducability
+tf.keras.utils.set_random_seed(SEED)    # Seed for reproducability
 
-# Model / training
-IMG_SIZE = 160              # 128–192 is a good range; 160 is a balanced default
-WIDTH_MULT = 0.75           # MobileNetV3 width multiplier (0.75/1.0)
-BATCH_SIZE = 64
-EPOCHS_HEAD = 4             # train classifier head with base frozen
-EPOCHS_FINE = 8             # fine-tune top layers
-BASE_LR = 1e-3
-FINE_TUNE_LR = 2e-4
-DROPOUT = 0.2
-SEED = 42
-IMAGE_NORMALIZER = "resize" # "resize" | "crop" | "bars"
+AUTOTUNE = tf.data.AUTOTUNE # Add Comment
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+Image.MAX_IMAGE_PIXELS = 50_000_000  # guard against decompression bombs
 
-def _get_version(manual_number, base_dir):
-    # Find subfolders matching pattern V_{manual}_{auto}
-    subfolders = [
-        p for p in base_dir.iterdir()
-        if p.is_dir() and p.name.startswith(f"V_{manual_number}_")
+
+# -----------------------------------------------------------------------------------------------------------------------------------
+# - Helperfunctions -----------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+def _get_next_model_version(main_version: int, models_dir="models") -> str:
+    os.makedirs(models_dir, exist_ok=True)
+    pattern = re.compile(rf"^V_{main_version}_(\d+)$")
+    subversions = []
+
+    for name in os.listdir(models_dir):
+        match = pattern.match(name)
+        if match:
+            subversions.append(int(match.group(1)))
+
+    next_sub = max(subversions) + 1 if subversions else 0
+    return f"V_{main_version}_{next_sub}"
+
+def _ensure_dir(d):
+    os.makedirs(d, exist_ok=True)
+
+def _load_manifest():
+    with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+        manifest = [json.loads(line) for line in f]
+    
+    return manifest
+
+def _get_pairs(manifest, split):
+    return [
+        (os.path.join(BASE_PATH, item["path"]), item["label_id"])
+        for item in manifest if item["split"] == split
     ]
 
-    # Extract the part after the second underscore and turn into int
-    nums = []
-    for folder in subfolders:
-        parts = folder.name.split("_")
-        if len(parts) >= 3 and parts[1].isdigit() and parts[2].isdigit():
-            nums.append(int(parts[2]))
+def _is_decodable_np(path_bytes) -> bool:
+    try:
+        path = path_bytes.decode("utf-8")
+        # try read + decode using TF (same decoder as training)
+        img_bytes = tf.io.read_file(path).numpy()
+        tf.io.decode_image(img_bytes, channels=3, expand_animations=False).numpy()
+        return True
+    except Exception:
+        return False
 
-    next_count = (max(nums) + 1) if nums else 1
+def _is_decodable_tf(path, label):
+    ok = tf.numpy_function(_is_decodable_np, [path], tf.bool)
+    # ensure shapes preserved through filter
+    ok.set_shape(())
+    return ok
 
-    return f"V_{manual_number}_{next_count:03d}"
+def _is_image_valid(path: str) -> bool:
+    try:
+        # very fast header check
+        with Image.open(path) as im:
+            im.verify()
+        return True
+    except Exception:
+        return False
 
-# Export dirs
-EXPORT_DIR = Path("models")
-MANUAL_VERSION = 0
-VERSION = _get_version(MANUAL_VERSION, EXPORT_DIR)
-KERAS_DIR = EXPORT_DIR / VERSION
-TFJS_DIR = EXPORT_DIR / VERSION
+def _filter_invalid_pairs(pairs, max_workers=8):
+    if not pairs:
+        return []
+    valid = []
+    with ThreadPoolExecutor(max_workers=max_workers) as ex:
+        futs = {ex.submit(_is_image_valid, p): (p, y) for (p, y) in pairs}
+        for fut in as_completed(futs):
+            p, y = futs[fut]
+            ok = False
+            try:
+                ok = fut.result()
+            except Exception:
+                ok = False
+            if ok:
+                valid.append((p, y))
+    removed = len(pairs) - len(valid)
+    if removed:
+        print(f"Filtered out {removed} unreadable images (kept {len(valid)})")
+    return valid
 
-# Optional metadata flags from your manifest generator
-INCLUDE_SHA256 = False
-INCLUDE_SIZE = False
-INCLUDE_IMAGE_DIMS = False
+# --- 2) Pure-TF preprocess (NO py_function, NO PIL in the map) ---------------
+def _preprocess_tf(path, label_id, training=False, img_size=IMG_SIZE, normalizer=IMAGE_NORMALIZER):
+    img_bytes = tf.io.read_file(path)
+    img = tf.io.decode_image(img_bytes, channels=3, expand_animations=False)   # TF-native
 
-AUTOTUNE = tf.data.AUTOTUNE
+    if normalizer == "resize":
+        img = tf.image.resize(img, (img_size, img_size), method="bilinear")
+    elif normalizer == "crop":
+        h = tf.shape(img)[0]; w = tf.shape(img)[1]
+        scale = tf.cast(img_size, tf.float32) / tf.cast(tf.minimum(h, w), tf.float32)
+        new_h = tf.cast(tf.round(tf.cast(h, tf.float32) * scale), tf.int32)
+        new_w = tf.cast(tf.round(tf.cast(w, tf.float32) * scale), tf.int32)
+        img = tf.image.resize(img, (new_h, new_w), method="bilinear")
+        img = tf.image.resize_with_crop_or_pad(img, img_size, img_size)
+    elif normalizer == "bars":
+        img = tf.image.resize_with_pad(img, img_size, img_size, method="bilinear")
+    else:
+        raise ValueError(f"Unknown IMAGE_NORMALIZER: {normalizer}")
 
+    img = tf.cast(img, tf.float32)  # keep float; EfficientNet preprocess handles scaling
+    if training:
+        img = tf.image.random_flip_left_right(img)
 
-# =====================
-# Helpers
-# =====================
+    img.set_shape([img_size, img_size, 3])
+    return img, tf.cast(label_id, tf.int32)
 
-def _read_jsonl(path: Path) -> List[dict]:
-    items: List[dict] = []
-    with path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            items.append(json.loads(line))
-    return items
+# --- 3) Dataset builder (no filters inside; sizes known) ---------------------
+def _make_dataset(pairs, training=False):
+    if not pairs:
+        return tf.data.Dataset.from_tensor_slices(([], [])).batch(BATCH_SIZE)
 
+    paths, labels = zip(*pairs)
+    ds = tf.data.Dataset.from_tensor_slices((list(paths), list(labels)))
 
-def _filter_split(items: List[dict], split: str) -> List[dict]:
-    return [x for x in items if x.get("split") == split]
+    if training:
+        ds = ds.shuffle(buffer_size=min(len(pairs), 4096))
 
+    num_calls = min(8, (os.cpu_count() or 8))
+    ds = ds.map(lambda p, y: _preprocess_tf(p, y, training),
+                num_parallel_calls=num_calls)
 
-def _abs_paths_and_labels(records: List[dict], dataset_root: Path) -> Tuple[List[str], List[int]]:
-    paths: List[str] = []
-    labels: List[int] = []
-    for r in records:
-        p = dataset_root / r["path"]
-        paths.append(str(p))
-        labels.append(int(r["label_id"]))
-    return paths, labels
+    opts = tf.data.Options()
+    opts.experimental_deterministic = False
+    ds = ds.with_options(opts)
 
+    ds = ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
+    return ds
 
-def _make_class_weights(train_labels: List[int], num_classes: int) -> Dict[int, float]:
-    """Balanced class weights: total / (num_classes * count_c)."""
-    counts = Counter(train_labels)
-    total = sum(counts.values())
-    weights = {}
-    for c in range(num_classes):
-        cnt = counts.get(c, 0)
-        weights[c] = (total / (num_classes * cnt)) if cnt > 0 else 0.0
-    return weights
+def _num_classes_from_pairs(pairs):
+    return int(max(l for _, l in pairs)) + 1 if pairs else 0
 
+def _class_weights_from_pairs(pairs):
+    cnt = Counter(l for _, l in pairs)
+    if not cnt: return None
+    total = sum(cnt.values())
+    k = len(cnt)
+    # inverse frequency
+    return {c: total/(k*cnt[c]) for c in cnt}
 
-def _build_datasets(manifest_path: Path, dataset_root: Path, img_size: int, batch_size: int, seed: int):
-    items = _read_jsonl(manifest_path)
-    train_items = _filter_split(items, "train")
-    val_items = _filter_split(items, "val")
-    test_items = _filter_split(items, "test")
+def save_history_artifacts(history, out_dir: str):
+    """
+    Saves: history.json, history.csv, and one PNG per metric (train vs val).
+    Works with keys like: 'loss', 'val_loss', 'accuracy', 'val_accuracy', etc.
+    """
+    _ensure_dir(out_dir)
+    h = history.history  # dict: metric -> list per epoch
 
-    train_paths, train_labels = _abs_paths_and_labels(train_items, dataset_root)
-    val_paths, val_labels = _abs_paths_and_labels(val_items, dataset_root)
-    test_paths, test_labels = _abs_paths_and_labels(test_items, dataset_root)
+    # 1) save raw history
+    with open(os.path.join(out_dir, "history.json"), "w") as f:
+        json.dump(h, f, indent=2)
 
-    def decode(path, label):
-        img = tf.io.read_file(path)
-        img = tf.io.decode_image(img, channels=3, expand_animations=False)
+    # 2) CSV (epochs as rows)
+    # collect union of keys
+    keys = sorted(h.keys())
+    rows = zip(*[h[k] for k in keys]) if keys else []
+    with open(os.path.join(out_dir, "history.csv"), "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["epoch"] + keys)
+        for i, row in enumerate(rows):
+            w.writerow([i+1] + list(row))
 
-        if (IMAGE_NORMALIZER == "resize"):
-            img = tf.image.resize(img, (img_size, img_size), method=tf.image.ResizeMethod.BILINEAR)
-        elif (IMAGE_NORMALIZER == "crop"):
-            # Resize so the shorter side == img_size, preserve aspect ratio
-            h = tf.shape(img)[0]; w = tf.shape(img)[1]
-            scale = tf.cast(img_size, tf.float32) / tf.cast(tf.minimum(h, w), tf.float32)
-            new_h = tf.cast(tf.round(tf.cast(h, tf.float32) * scale), tf.int32)
-            new_w = tf.cast(tf.round(tf.cast(w, tf.float32) * scale), tf.int32)
-            img = tf.image.resize(img, (new_h, new_w), method=tf.image.ResizeMethod.BILINEAR)
-            img = tf.image.resize_with_crop_or_pad(img, img_size, img_size)  # center crop to square
-        elif (IMAGE_NORMALIZER == "bars"):
-            img = tf.image.resize_with_pad(img, img_size, img_size, method=tf.image.ResizeMethod.BILINEAR)
-        else:
-            raise ValueError(f"Unknown IMAGE_NORMALIZER: {IMAGE_NORMALIZER}")
-
-        img = tf.cast(img, tf.float32)
-        return img, tf.cast(label, tf.int32)
-
-    augment = keras.Sequential([
-        layers.RandomFlip("horizontal"),
-        layers.RandomRotation(0.03),
-        layers.RandomZoom(0.1),
-    ], name="augment")
-
-    def preprocess(img, label):
-        # MobileNetV3 expects inputs scaled to [-1, 1]
-        img = tf.keras.applications.mobilenet_v3.preprocess_input(img)
-        return img, label
-
-    def make_ds(paths, labels, training: bool):
-        ds = tf.data.Dataset.from_tensor_slices((paths, labels))
-        if training:
-            ds = ds.shuffle(buffer_size=min(8192, len(paths)), seed=seed, reshuffle_each_iteration=True)
-        ds = ds.map(decode, num_parallel_calls=AUTOTUNE)
-        if training:
-            ds = ds.map(lambda x, y: (augment(x, training=True), y), num_parallel_calls=AUTOTUNE)
-        ds = ds.map(preprocess, num_parallel_calls=AUTOTUNE)
-        ds = ds.batch(batch_size).prefetch(AUTOTUNE)
-        return ds
-
-    train_ds = make_ds(train_paths, train_labels, training=True)
-    val_ds   = make_ds(val_paths,   val_labels,   training=False)
-    test_ds  = make_ds(test_paths,  test_labels,  training=False)
-
-    class_weights = _make_class_weights(train_labels, NUM_CLASSES)
-
-    info = {
-        "num_train": len(train_paths),
-        "num_val": len(val_paths),
-        "num_test": len(test_paths),
-        "class_weights": class_weights,
-    }
-    return train_ds, val_ds, test_ds, info
+    # 3) plots: for each base metric (without 'val_'), plot train + val
+    base_metrics = [k for k in keys if not k.startswith("val_")]
+    for m in base_metrics:
+        plt.figure()
+        plt.plot(h[m], label=m)
+        val_key = f"val_{m}"
+        if val_key in h:
+            plt.plot(h[val_key], label=val_key)
+        plt.xlabel("Epoch")
+        plt.ylabel(m)
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(os.path.join(out_dir, f"{m}.png"), dpi=160)
+        plt.close()
 
 
-# =====================
-# Model
-# =====================
-
-def build_model(img_size: int, num_classes: int, width_mult: float, dropout: float) -> keras.Model:
-    inputs = layers.Input(shape=(img_size, img_size, 3))
-
-    base = tf.keras.applications.MobileNetV3Small(
-        input_shape=(img_size, img_size, 3),
+# -----------------------------------------------------------------------------------------------------------------------------------
+# - Mainfunction --------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+def build_model(num_classes: int):
+    base = tf.keras.applications.EfficientNetB0(
         include_top=False,
-        weights="imagenet",
-        alpha=width_mult,
-        pooling=None,
+        input_shape=(IMG_SIZE, IMG_SIZE, 3),
+        weights="imagenet"
     )
     base.trainable = False
-
-    x = base(inputs, training=False)
-    x = layers.GlobalAveragePooling2D()(x)
-    if dropout and dropout > 0:
-        x = layers.Dropout(dropout)(x)
-    outputs = layers.Dense(num_classes, activation="softmax")(x)
-
-    model = keras.Model(inputs, outputs)
+    inputs = tf.keras.Input((IMG_SIZE, IMG_SIZE, 3))
+    x = preprocess_input(inputs)                 # safe regardless of Keras version
+    x = base(x, training=False)
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dropout(DROPOUT)(x)     # <— use DROPOUT
+    outputs = tf.keras.layers.Dense(num_classes, activation="softmax")(x)
+    model = tf.keras.Model(inputs, outputs)
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(learning_rate=BASE_LR),           # <— BASE_LR
+        # loss=tf.keras.losses.SparseCategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING), # This should reduce overfitting but throws an error right now so it is taken out, might try to put it back in later
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=["accuracy"]
+    )
     return model
 
-def compile_model(model: keras.Model, lr: float):
-    opt = keras.optimizers.Adam(learning_rate=lr)
+def train(train_ds, val_ds, train_pairs, val_pairs, epochs=EPOCHS, use_class_weights=True, out_dir=None):
+    num_classes = _num_classes_from_pairs(train_pairs)
+    if num_classes <= 1:
+        raise ValueError("num_classes <= 1 — check your labels.")
+    class_weight = _class_weights_from_pairs(train_pairs) if use_class_weights else None
+
+    model = build_model(num_classes)
+    callbacks = []
+    if out_dir:
+        callbacks = [
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=os.path.join(out_dir, "best.keras"),
+                monitor="val_accuracy",
+                save_best_only=True,
+                mode="max"
+            ),
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_accuracy",
+                patience=PATIENCE,
+                restore_best_weights=True
+            )
+        ]
+    
+    n_train = len(train_pairs)
+    n_val   = len(val_pairs)
+
+    steps_per_epoch = math.ceil(n_train / BATCH_SIZE) if n_train else 0
+    val_steps       = math.ceil(n_val   / BATCH_SIZE) if n_val   else None
+
+    if steps_per_epoch == 0:
+        raise ValueError("No training samples after filtering.")
+
+    history = model.fit(
+        train_ds,
+        validation_data=val_ds if n_val else None,
+        epochs=EPOCHS,
+        steps_per_epoch=steps_per_epoch,
+        validation_steps=val_steps,    # or omit if n_val == 0
+        class_weight=class_weight,
+        callbacks=callbacks,
+    )
+    return model, history
+
+def fine_tune(model, train_ds, val_ds, lr=FINE_TUNE_LR, unfreeze_from=UNFREEZE_FROM,
+              epochs=FINETUNE_EPOCHS, out_dir=None):
+    # unfreeze last N layers of the base model
+    base = next(l for l in model.layers if isinstance(l, tf.keras.Model))
+    for layer in base.layers:
+        layer.trainable = False
+    for layer in base.layers[unfreeze_from:]:
+        layer.trainable = True
+
     model.compile(
-        optimizer=opt,
-        loss=keras.losses.SparseCategoricalCrossentropy(),
-        metrics=[
-            keras.metrics.SparseCategoricalAccuracy(name="acc"),
-        ],
+        optimizer=tf.keras.optimizers.Adam(learning_rate=lr),               # <— FINE_TUNE_LR
+        # loss=tf.keras.losses.SparseCategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING), # Would enhance overfitting but somehow doesnt work
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        metrics=["accuracy"]
     )
+    callbacks = []
+    if out_dir:
+        callbacks = [
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=os.path.join(out_dir, "best_finetune.keras"),
+                monitor="val_accuracy",
+                save_best_only=True,
+                mode="max"
+            ),
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_accuracy",
+                patience=PATIENCE,
+                restore_best_weights=True
+            )
+        ]
+    hist_ft = model.fit(train_ds, validation_data=val_ds, epochs=epochs, callbacks=callbacks)
+    return hist_ft
 
 
-# Helper: Compute confusion matrix and macro precision/recall for multi-class
-def eval_confmat_and_pr(ds, model, num_classes: int):
-    """Return (cm, per_class_precision, per_class_recall, macro_precision, macro_recall)."""
-    y_true, y_pred = [], []
-    for x, y in ds:
-        p = model.predict(x, verbose=0)
-        y_true.append(y.numpy())
-        y_pred.append(np.argmax(p, axis=1))
-    y_true = np.concatenate(y_true) if len(y_true) else np.array([], dtype=np.int32)
-    y_pred = np.concatenate(y_pred) if len(y_pred) else np.array([], dtype=np.int32)
-    cm = tf.math.confusion_matrix(y_true, y_pred, num_classes=num_classes).numpy().astype(int)
-    tp = np.diag(cm).astype(float)
-    fp = cm.sum(axis=0) - tp
-    fn = cm.sum(axis=1) - tp
-    precision = np.where(tp + fp > 0, tp / (tp + fp), 0.0)
-    recall    = np.where(tp + fn > 0, tp / (tp + fn), 0.0)
-    macro_p = float(precision.mean())
-    macro_r = float(recall.mean())
-    return cm, precision.tolist(), recall.tolist(), macro_p, macro_r
+# -----------------------------------------------------------------------------------------------------------------------------------
+# - Controlfunction -----------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+def main():
+    print(tf.config.list_physical_devices('GPU'))
+    print(tf.__version__)
+    print(tf.keras.losses.SparseCategoricalCrossentropy.__init__)
 
+    version_name = _get_next_model_version(MAIN_VERSION, models_dir="models")
+    version_dir = os.path.join("models", version_name)
+    os.makedirs(version_dir, exist_ok=True)
+    print("Saving to:", version_dir)
 
-# =====================
-# Train & Evaluate
-# =====================
+    log_data_training(f"Started prozess for training Version: {version_name}") # Create Log
 
-class LogBestValAcc(keras.callbacks.Callback):
-    def __init__(self):
-        super().__init__()
-        self.best = -float("inf")
-    def on_epoch_end(self, epoch, logs=None):
-        logs = logs or {}
-        val = logs.get("val_acc") or logs.get("val_accuracy")
-        if val is not None and val > self.best:
-            self.best = val
-            log_data_training(f"New best val_acc: {val:.4f} at epoch {epoch+1}")
+    manifest = _load_manifest()
 
-def train_and_eval():
-    # Pull in global variables
-    global DATASET_ROOT
-    global MANIFEST_PATH
-    global CLASS_NAMES
-    global NUM_CLASSES
-    global IMG_SIZE
-    global WIDTH_MULT
-    global BATCH_SIZE
-    global EPOCHS_HEAD
-    global EPOCHS_FINE
-    global BASE_LR
-    global FINE_TUNE_LR
-    global DROPOUT
-    global SEED
-    global IMAGE_NORMALIZER
+    print("loaded manifest-------------------------------------------------------------------------")
 
-    # Data
-    train_ds, val_ds, test_ds, info = _build_datasets(MANIFEST_PATH, DATASET_ROOT, IMG_SIZE, BATCH_SIZE, SEED)
-    log_data_training(f"Data loaded | train: {info['num_train']} val: {info['num_val']} test: {info['num_test']}")
+    train_pairs = _get_pairs(manifest, "train")
+    val_pairs   = _get_pairs(manifest, "val")
+    test_pairs  = _get_pairs(manifest, "test")
 
-    # Model
-    model = build_model(IMG_SIZE, NUM_CLASSES, WIDTH_MULT, DROPOUT)
-    compile_model(model, BASE_LR)
-    log_data_training(f"Model built | MobileNetV3Small alpha={WIDTH_MULT}, img={IMG_SIZE}, dropout={DROPOUT}")
+    # Pre-scan (drops bad files fast, parallel)
+    train_pairs = _filter_invalid_pairs(train_pairs, max_workers=8)
+    val_pairs   = _filter_invalid_pairs(val_pairs,   max_workers=8)
+    test_pairs  = _filter_invalid_pairs(test_pairs,  max_workers=8)
 
-    # Callbacks
-    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
-    KERAS_DIR.mkdir(parents=True, exist_ok=True)
-    TFJS_DIR.mkdir(parents=True, exist_ok=True)
+    print("created pairs---------------------------------------------------------------------------")
 
-    ckpt_path = KERAS_DIR / "best_model.keras"
-    callbacks = [
-        keras.callbacks.ModelCheckpoint(
-            filepath=str(ckpt_path),
-            monitor="val_acc",
-            mode="max",
-            save_best_only=True,
-        ),
-        keras.callbacks.EarlyStopping(monitor="val_acc", mode="max", patience=4, restore_best_weights=True),
-        keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=2, verbose=1),
-    ]
-    callbacks.append(LogBestValAcc())
-    log_data_training(f"Checkpoint → {ckpt_path}")
+    train_ds = _make_dataset(train_pairs, training=True)
+    val_ds   = _make_dataset(val_pairs,   training=False)
+    test_ds  = _make_dataset(test_pairs,  training=False)
 
-    # Class weights for imbalance
-    class_weights = info["class_weights"]
+    # Fixed sizes → no "Unknown" in progress bar
+    steps_per_epoch = math.ceil(len(train_pairs) / BATCH_SIZE) if train_pairs else 0
+    val_steps       = math.ceil(len(val_pairs) / BATCH_SIZE)   if val_pairs else 0
 
-    # Phase 1: train head
-    history1 = model.fit(
-        train_ds,
-        validation_data=val_ds,
-        epochs=EPOCHS_HEAD,
-        class_weight=class_weights,
-        verbose=1,
-        callbacks=callbacks,
+    print("created datasets------------------------------------------------------------------------")
+
+    log_data_training(f"Settings:") # Create Log
+    log_data_training(f"Image Size:             {IMG_SIZE}") # Create Log
+    log_data_training(f"Image Normalization:    {IMAGE_NORMALIZER}") # Create Log
+    log_data_training(f"Epochs:                 {EPOCHS}") # Create Log
+    log_data_training(f"Finetune Epochs:        {FINETUNE_EPOCHS}") # Create Log
+    log_data_training(f"Batch Size:             {BATCH_SIZE}") # Create Log
+    log_data_training(f"Base Learning Rate:     {BASE_LR}") # Create Log
+    log_data_training(f"Finetune Learning Rate: {FINE_TUNE_LR}") # Create Log
+    log_data_training(f"Dropout:                {DROPOUT}") # Create Log
+    log_data_training(f"Unfreeze From:          {UNFREEZE_FROM}") # Create Log
+    log_data_training(f"Patience:               {PATIENCE}") # Create Log
+    log_data_training(f"Label Smoothing:        {LABEL_SMOOTHING}") # Create Log
+    log_data_training(f"Seed:                   {SEED}") # Create Log
+
+    # Stage 1
+    
+    model, history = train(
+        train_ds, val_ds, train_pairs, val_pairs,
+        epochs=EPOCHS, out_dir=version_dir
+        # you can pass steps_per_epoch/validation_steps if you want to enforce
     )
-    try:
-        best1 = max(history1.history.get('val_acc', []))
-        log_data_training(f"Phase 1 done | best val_acc: {best1:.4f}")
-    except Exception:
-        pass
+    save_history_artifacts(history, out_dir=os.path.join(version_dir, "stage1"))
 
-    # Phase 2: fine-tune top layers
-    # Unfreeze last ~30% of layers
-    base = model.layers[1]  # the MobileNetV3 layer
-    if isinstance(base, keras.Model):
-        n = len(base.layers)
-        cutoff = int(n * 0.7)
-        log_data_training(f"Fine-tuning: unfreezing top {n - cutoff} / {n} layers")
-        for l in base.layers[cutoff:]:
-            if not isinstance(l, layers.BatchNormalization):
-                l.trainable = True
-    compile_model(model, FINE_TUNE_LR)
-    log_data_training("Fine-tuning started")
+    log_data_training(f"Training complete") # Create Log
+    
+    print("completed training----------------------------------------------------------------------")
 
-    history2 = model.fit(
-        train_ds,
-        validation_data=val_ds,
-        epochs=EPOCHS_FINE,
-        class_weight=class_weights,
-        verbose=1,
-        callbacks=callbacks,
-    )
-    try:
-        best2 = max(history2.history.get('val_acc', []))
-        log_data_training(f"Phase 2 done | best val_acc: {best2:.4f}")
-    except Exception:
-        pass
+    # Stage 2
+    hist_ft = fine_tune(model, train_ds, val_ds, out_dir=version_dir)
+    save_history_artifacts(hist_ft, out_dir=os.path.join(version_dir, "finetune"))
 
-    # Evaluate
-    eval_val = model.evaluate(val_ds, verbose=0)
-    eval_test = model.evaluate(test_ds, verbose=0)
+    print("completed finetuning--------------------------------------------------------------------")
 
-    metrics = {
-        "val": {m.name if hasattr(m, "name") else m: float(v) for m, v in zip(model.metrics, eval_val)},
-        "test": {m.name if hasattr(m, "name") else m: float(v) for m, v in zip(model.metrics, eval_test)},
-        "info": info,
-    }
-    va = metrics.get('val', {})
-    te = metrics.get('test', {})
-    def _fmt(d, k):
-        v = d.get(k)
-        return f"{v:.4f}" if isinstance(v, (int, float)) else "n/a"
+    log_data_training(f"Fine-Tuning complete") # Create Log
 
-    # Compute confusion matrices and macro P/R for multi-class
-    cm_val, prec_val, rec_val, macro_p_val, macro_r_val = eval_confmat_and_pr(val_ds, model, NUM_CLASSES)
-    cm_test, prec_test, rec_test, macro_p_test, macro_r_test = eval_confmat_and_pr(test_ds, model, NUM_CLASSES)
+    # Save final model folder + evaluate
+    model.save(os.path.join(version_dir, "model.keras"))
+    model.save(os.path.join(version_dir, "model.h5"))
+    model.export(os.path.join(version_dir, "savedmodel"))
+    tfjs.converters.save_keras_model(model, version_dir)
+    test_loss, test_acc = model.evaluate(test_ds)
+    print(f"Test acc: {test_acc:.4f}")
 
-    # Attach to metrics for saving
-    metrics["val_cm"] = cm_val.tolist()
-    metrics["test_cm"] = cm_test.tolist()
-    metrics["val_pr"] = {
-        "per_class_precision": prec_val,
-        "per_class_recall": rec_val,
-        "macro_precision": macro_p_val,
-        "macro_recall": macro_r_val,
-    }
-    metrics["test_pr"] = {
-        "per_class_precision": prec_test,
-        "per_class_recall": rec_test,
-        "macro_precision": macro_p_test,
-        "macro_recall": macro_r_test,
-    }
-
-    # Log the settings and final results (using module-level constants)
-    log_data_training(f"- Settings -------------------------------------------------------------------------------------------")
-    log_data_training(f"Image Size:              {IMG_SIZE}")
-    log_data_training(f"Multiplier Width:        {WIDTH_MULT}")
-    log_data_training(f"Batchsize:               {BATCH_SIZE}")
-    log_data_training(f"Epochs Head:             {EPOCHS_HEAD}")
-    log_data_training(f"Epochs Fine:             {EPOCHS_FINE}")
-    log_data_training(f"Base Learning Rate:      {BASE_LR}")
-    log_data_training(f"Fine_Tune Learning Rate: {FINE_TUNE_LR}")
-    log_data_training(f"Dropout:                 {DROPOUT}")
-    log_data_training(f"Seed:                    {SEED}")
-    log_data_training(f"- Results --------------------------------------------------------------------------------------------")
-    log_data_training(f"Validation | acc: {_fmt(va,'acc')}  macro P: {macro_p_val:.4f}  macro R: {macro_r_val:.4f}")
-    log_data_training(f"Test       | acc: {_fmt(te,'acc')}  macro P: {macro_p_test:.4f}  macro R: {macro_r_test:.4f}")
-    log_data_training(f"------------------------------------------------------------------------------------------------------")
-
-    # Save training curves & metrics
-    hist = {"phase1": history1.history, "phase2": history2.history}
-    with (EXPORT_DIR / "history.json").open("w", encoding="utf-8") as f:
-        json.dump(hist, f, indent=2)
-    with (EXPORT_DIR / "metrics.json").open("w", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2)
-
-    # Save Keras & TF.js
-    model.save(str(ckpt_path))
-    log_data_training(f"Saved Keras model → {ckpt_path}")
-    try:
-        import tensorflowjs as tfjs
-        tfjs.converters.save_keras_model(model, str(TFJS_DIR))
-        log_data_training(f"Saved TF.js model → {TFJS_DIR}")
-        print(f"[OK] TF.js model saved to: {TFJS_DIR}")
-    except Exception as e:
-        log_data_training("TF.js export skipped (install tensorflowjs)")
-        print("[WARN] Skipping TF.js export. Install 'tensorflowjs' to enable (pip install tensorflowjs).", e)
-
-    log_data_training(f"Training completed for {VERSION}\n\n")
-    print("[OK] Training done.")
-    print("Val:", metrics["val"])  
-    print("Test:", metrics["test"])
-
+    log_data_training(f"Test Loss: {test_loss} | Test Accuracy: {test_acc}\n\n") # Create Log
 
 if __name__ == "__main__":
-    log_data_training(f"Started process for: {VERSION}") # Log-Entry
-
-    # Reproducibility
-    tf.keras.utils.set_random_seed(SEED)
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-    train_and_eval()
+    main()
