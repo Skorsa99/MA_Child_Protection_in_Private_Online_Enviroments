@@ -125,8 +125,8 @@
         .video-holder-safe {
             border:5px solid limegreen;
         }
-        
-        .video-holder-safe {
+
+        .video-holder-unsafe {
             border:5px solid red;
         }
         
@@ -170,6 +170,7 @@
         const camToggle = document.getElementById('cam-toggle');
 
         let currentStream = null;
+        let stopLoop = () => {};
 
         async function startCamera(){
             // Stoppe evtl. alte Streams sauber
@@ -190,7 +191,7 @@
                 videoEl.srcObject = stream;
                 // Autoplay-Hinweis: muted + playsinline sind gesetzt
 
-                const stopLoop = startFrameLoop(
+                stopLoop = startFrameLoop(
                     document.getElementById('video-holder'),
                     (imgData, canvas) => {
                         // console.log(imgData); // or send it somewhere
@@ -212,8 +213,8 @@
                 currentStream.getTracks().forEach(t => t.stop());
                 currentStream = null;
                 videoEl.srcObject = null;
-                stopLoop();
             }
+            stopLoop();
         }
 
         // Toggle steuert Kamera
@@ -235,13 +236,13 @@
             canvas.height = 224;
 
             // Replace any existing content
-            processedDiv = document.getElementById('processed_video_holder');
+            const processedDiv = document.getElementById('processed_video_holder');
             processedDiv.innerHTML = '';
             processedDiv.appendChild(canvas);
 
             let running = true;
 
-            function loop() {
+            async function loop() {
                 if (!running) return;
 
                 // Draw the video frame scaled to 224x224
@@ -253,11 +254,10 @@
                 // Send the data to the callback
                 callback(imgData, canvas);
 
+                await classifyFromProcessedDiv();
+
                 requestAnimationFrame(loop);
             }
-
-            classifyFromProcessedDiv()
-                .then(preds => console.log('Predictions:', preds));
 
             loop();
 
@@ -276,19 +276,25 @@
         let model;
         async function loadModel() {
             if (!model) {
-                model = await tf.loadLayersModel('../../models/V_0_6/model.json');
+                try {
+                    model = await tf.loadLayersModel('../../models/V_0_6/model.json');
+                } catch (err) {
+                    console.error('Failed to load model', err);
+                    return null;
+                }
             }
             return model;
         }
 
         async function classifyFromProcessedDiv() {
-            const canvas = document.querySelector('#processed_video_holder canvas'); 
+            const canvas = document.querySelector('#processed_video_holder canvas');
             if (!canvas) {
                 console.error("No canvas found in processed-video-holder");
                 return;
             }
 
             const model = await loadModel();
+            if (!model) return;
 
             const tensor = tf.browser.fromPixels(canvas)
                 .resizeBilinear([224, 224])
@@ -302,7 +308,17 @@
             tensor.dispose();
             predictions.dispose();
 
-            console.log(Array.from(data));
+            const labels = ['unsafe', 'safe', 'empty'];
+            const maxIdx = data.indexOf(Math.max(...data));
+            const processedDiv = document.getElementById('processed_video_holder');
+            processedDiv.classList.remove('video-holder-safe', 'video-holder-unsafe');
+            if (labels[maxIdx] === 'unsafe') {
+                processedDiv.classList.add('video-holder-unsafe');
+            } else {
+                processedDiv.classList.add('video-holder-safe');
+            }
+
+            return Array.from(data);
         }
     </script>
 </body>
