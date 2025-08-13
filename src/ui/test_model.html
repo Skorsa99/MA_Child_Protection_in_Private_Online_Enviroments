@@ -123,16 +123,21 @@
         }
         
         .video-holder-safe {
-            border:5px solid limegreen;
+        border:5px solid limegreen;
         }
         
-        .video-holder-safe {
+        .video-holder-unsafe {
             border:5px solid red;
+        }
+    
+        .video-holder-empty {
+            border:5px solid black;
         }
         
         .processed_video_holder {
             width: 100%;
             aspect-ratio: 1 / 1;
+            max-height: calc(100% - 55px);
             border-top-left-radius: 10px;
             border-top-right-radius: 30px;
             border-bottom-left-radius: 10px;
@@ -212,7 +217,13 @@
                 currentStream.getTracks().forEach(t => t.stop());
                 currentStream = null;
                 videoEl.srcObject = null;
-                stopLoop();
+                
+                const stopLoop = startFrameLoop(
+                    document.getElementById('video-holder'),
+                    (imgData, canvas) => {
+                        // console.log(imgData); // or send it somewhere
+                    }
+                );
             }
         }
 
@@ -231,8 +242,8 @@
         function startFrameLoop(videoEl, callback) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
-            canvas.width = 224;
-            canvas.height = 224;
+            canvas.width = 64;
+            canvas.height = 64;
 
             // Replace any existing content
             processedDiv = document.getElementById('processed_video_holder');
@@ -256,9 +267,6 @@
                 requestAnimationFrame(loop);
             }
 
-            classifyFromProcessedDiv()
-                .then(preds => console.log('Predictions:', preds));
-
             loop();
 
             // Return a function to stop the loop
@@ -271,39 +279,130 @@
 
 
 
+        // ------------------------------------------------------------------------------------------
+        // - Classification logic -------------------------------------------------------------------
+        // ------------------------------------------------------------------------------------------
+        const MODEL_PATH = '/models/V_0_6/model.json';
+        const META_PATH  = 'models/V_0_6/labels.json';
+        let model = undefined;
+        let META  = { classes: ['unsafe','safe','empty'], img_size: 224 };
+        let IMG_SIZE = 64;
+        let CLASSES  = META.classes;
 
-
-        let model;
-        async function loadModel() {
-            if (!model) {
-                model = await tf.loadLayersModel('../../models/V_0_6/model.json');
-            }
-            return model;
+        async function loadModelAndMeta() {
+            try {
+                const res = await fetch(META_PATH);
+                if (res.ok) {
+                    META = await res.json();
+                    if (Array.isArray(META.classes)) CLASSES = META.classes;
+                    if (typeof META.img_size === 'number') IMG_SIZE = META.img_size;
+                }
+            } catch (e) { console.warn('Failed to load labels.json, using defaults.', e); }
+            model = await tf.loadLayersModel(MODEL_PATH);
+            console.log('TFJS model loaded:', MODEL_PATH, 'img_size=', IMG_SIZE, 'classes=', CLASSES);
         }
 
-        async function classifyFromProcessedDiv() {
-            const canvas = document.querySelector('#processed_video_holder canvas'); 
-            if (!canvas) {
-                console.error("No canvas found in processed-video-holder");
-                return;
+        function updateBorder(topLabel) {
+            videoEl.classList.remove('video-holder-safe', 'video-holder-unsafe', 'video-holder-empty');
+            if (String(topLabel).toLowerCase() === 'empty') {
+                videoEl.classList.add('video-holder-empty');
+                console.log("Empty");
+            } else if (String(topLabel).toLowerCase() === 'unsafe') {
+                videoEl.classList.add('video-holder-unsafe');
+                console.log("Unsafe");
+            } else {
+                videoEl.classList.add('video-holder-safe');
+                console.log("Safe");
+            }
+        }
+
+        function drawOverlay(ctx, probs) {
+            if (!probs || !probs.length) return;
+            const w = ctx.canvas.width, h = ctx.canvas.height;
+            ctx.save();
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0, 0, w, Math.max(30, 16 * CLASSES.length + 10));
+            ctx.fillStyle = 'white';
+            ctx.font = '12px sans-serif';
+            let y = 16;
+            let maxIdx = 0, maxVal = -1;
+            for (let i = 0; i < probs.length; i++) { if (probs[i] > maxVal) { maxVal = probs[i]; maxIdx = i; } }
+            for (let i = 0; i < probs.length; i++) {
+                const p = probs[i];
+                const label = (CLASSES[i] !== undefined) ? CLASSES[i] : ('class ' + i);
+                const star = (i === maxIdx) ? '★ ' : '';
+                ctx.fillText(`${star}${label}: ${(p*100).toFixed(1)}%`, 8, y);
+                y += 16;
+            }
+            ctx.restore();
+        }
+
+        async function classifyFrameFromCanvas(canvas) {
+            if (!model) return null;
+            // IMPORTANT: Do not return a Promise from inside tf.tidy().
+            // Create the tensor inside tidy, return a TENSOR, then await .data() outside.
+            const probsTensor = tf.tidy(() => {
+                const input = tf.browser.fromPixels(canvas)
+                    .resizeNearestNeighbor([IMG_SIZE, IMG_SIZE])
+                    .toFloat()
+                    .div(255)
+                    .expandDims(0);
+                const logits = model.predict(input);
+                const t = Array.isArray(logits) ? logits[0] : logits; // ensure Tensor
+                // Apply softmax unconditionally; if the model already has softmax, this is idempotent for most cases.
+                return tf.softmax(t);
+            });
+            const probsArr = await probsTensor.data();
+            probsTensor.dispose();
+            return Array.from(probsArr);
+        }
+
+        // Replace startFrameLoop to use dynamic IMG_SIZE and run inference
+        function startFrameLoop(videoEl, callback) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = IMG_SIZE;
+            canvas.height = IMG_SIZE;
+
+            processedDiv = document.getElementById('processed_video_holder');
+            processedDiv.innerHTML = '';
+            processedDiv.appendChild(canvas);
+
+            let running = true;
+
+            async function loop() {
+                if (!running) return;
+                ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
+                let probs = null;
+                try {
+                    probs = await classifyFrameFromCanvas(canvas);
+                } catch (e) {
+                    // swallow inference errors for robustness
+                }
+                if (probs) {
+                    // Determine top class
+                    let maxIdx = 0, maxVal = -1;
+                    for (let i = 0; i < probs.length; i++) { if (probs[i] > maxVal) { maxVal = probs[i]; maxIdx = i; } }
+                    const topLabel = (CLASSES[maxIdx] !== undefined) ? CLASSES[maxIdx] : ('class ' + maxIdx);
+                    updateBorder(topLabel);
+                    drawOverlay(ctx, probs);
+                }
+
+                // If a callback was provided, pass raw ImageData too
+                if (typeof callback === 'function') {
+                    const imgData = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE);
+                    try { callback(imgData, canvas); } catch (e) {}
+                }
+
+                requestAnimationFrame(loop);
             }
 
-            const model = await loadModel();
-
-            const tensor = tf.browser.fromPixels(canvas)
-                .resizeBilinear([224, 224])
-                .toFloat()
-                .sub(127.5).div(127.5)  // EfficientNet preprocess_input scaling
-                .expandDims(0);         // [1, 224, 224, 3]
-
-            const predictions = model.predict(tensor);
-            const data = await predictions.data();
-
-            tensor.dispose();
-            predictions.dispose();
-
-            console.log(Array.from(data));
+            loop();
+            return () => { running = false; };
         }
+
+        // Kick off loading
+        loadModelAndMeta();
     </script>
 </body>
 </html>

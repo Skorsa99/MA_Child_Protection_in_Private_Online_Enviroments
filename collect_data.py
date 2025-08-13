@@ -345,12 +345,12 @@ def convert_jpg_to_jpeg(folder_path, delete_original=False):
             with Image.open(jpg_file) as img:
                 rgb_img = img.convert("RGB")  # Ensure standard RGB format
                 rgb_img.save(jpeg_path, "JPEG")
-            print(f"Converted: {jpg_file} -> {jpeg_path}")
+            # print(f"Converted: {jpg_file} -> {jpeg_path}")
             counter_c += 1
 
             if delete_original:
                 jpg_file.unlink()
-                print(f"Deleted original: {jpg_file}")
+                # print(f"Deleted original: {jpg_file}")
                 counter_d += 1
 
         except Exception as e:

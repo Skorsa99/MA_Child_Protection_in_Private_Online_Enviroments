@@ -1,0 +1,10 @@
+{
+  "classes": [
+    "unsafe",
+    "safe",
+    "empty"
+  ],
+  "img_size": 32,
+  "framework": "tfjs-layers",
+  "created_by": "train_model_V2.py"
+}

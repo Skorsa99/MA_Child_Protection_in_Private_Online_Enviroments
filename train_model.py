@@ -227,6 +227,7 @@ def build_model(num_classes: int):
     )
     base.trainable = False
     inputs = tf.keras.Input((IMG_SIZE, IMG_SIZE, 3))
+    # inputs = tf.keras.Input(batch_shape=(None, IMG_SIZE, IMG_SIZE, 3))
     x = preprocess_input(inputs)                 # safe regardless of Keras version
     x = base(x, training=False)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
