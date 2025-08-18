@@ -1,0 +1,8 @@
+{
+  "img_size": 224,
+  "image_normalizer": "resize",
+  "num_classes": 3,
+  "label_smoothing": 0.0,
+  "created_with_tf": "2.15.0",
+  "notes": "Load with tf.loadLayersModel('path/to/model.json'). Inputs must be float32 [-1,1]. Label_smoothing has to be 0.0 bcause it doesnt accept the parameter."
+}

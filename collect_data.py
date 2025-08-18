@@ -336,6 +336,7 @@ def convert_jpg_to_jpeg(folder_path, delete_original=False):
     
     counter_c = 0
     counter_d = 0
+    counter_ed = 0
     counter_e = 0
 
     for jpg_file in folder.glob("*.jpg"):
@@ -397,6 +398,18 @@ if __name__ == "__main__":
         ["swimbrief", "unsafe"],
         ["Femalenudesonly", "unsafe"],
 
+        ["beach_bodies", "unsafe"],
+        ["NudeMaleArt", "unsafe"],
+        ["FreedomToFlaunt", "unsafe"],
+        ["Shirtless_Men", "unsafe"],
+        ["shirtlessguys", "unsafe"],
+        ["ShirtlessCelebMen", "unsafe"],
+        ["shirtlessinpublic", "unsafe"],
+        ["Brogress", "unsafe"],
+        ["Beardsandboners", "unsafe"],
+        ["gonewild", "unsafe"],
+        ["ladybonersgonemild", "unsafe"],
+
         # --- safe ---
         ["selfies", "safe"],
         ["outfitoftheday", "safe"],
@@ -418,6 +431,10 @@ if __name__ == "__main__":
         ["medicalillustration", "safe"],
         ["anatomicalart", "safe"],
         ["Homescreens", "safe"],
+        
+        ["UI_Design", "safe"],
+        ["portraits", "safe"],
+        ["whitetanktops", "safe"],
 
         # --- empty ---
         ["InteriorDesign", "empty"],
@@ -427,6 +444,44 @@ if __name__ == "__main__":
         ["SkyPorn", "empty"],
         ["MyRoom", "empty"],
     ]
+
+    safe_only_subreddits = [
+        # --- safe ---
+        ["selfies", "safe"],
+        ["outfitoftheday", "safe"],
+        ["malehairadvice", "safe"],
+        ["selfie", "safe"],
+        ["Outfits", "safe"],
+        ["TodayIWore", "safe"],
+        ["MakeupAddiction", "safe"],
+        ["malefashion", "safe"],
+        ["malegrooming", "safe"],
+        ["beards", "safe"],
+        ["FreeCompliments", "safe"],
+        ["over60selfies", "safe"],
+        ["50something", "safe"],
+        ["40something", "safe"],
+        ["blackladies", "safe"],
+        ["FreeAIHeadshots", "safe"],
+        ["headshots", "safe"],
+        ["medicalillustration", "safe"],
+        ["anatomicalart", "safe"],
+        ["Homescreens", "safe"],
+        
+        ["UI_Design", "safe"],
+        ["portraits", "safe"],
+        ["whitetanktops", "safe"],
+
+        # --- empty ---
+        ["InteriorDesign", "empty"],
+        ["AmateurRoomPorn", "empty"],
+        ["Workspaces", "empty"],
+        ["EarthPorn", "empty"],
+        ["SkyPorn", "empty"],
+        ["MyRoom", "empty"],
+    ]
+
+    run_counter = 0 # Counts how many images where stored in this run
 
     for SUBREDDIT, CATEGORY in subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
@@ -444,5 +499,11 @@ if __name__ == "__main__":
             end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
         print(end_message)
 
+        run_counter += image_counter
+
         if CATEGORY != "TESTS":
             log_data_collection(end_message)
+
+    print(f"------------------------------------------------------------------------")
+    print(f"Total images collected in this run: {run_counter}")
+    print(f"------------------------------------------------------------------------")

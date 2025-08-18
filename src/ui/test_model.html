@@ -69,7 +69,7 @@
         /* File input wrapper */
         .file-input-wrapper {
             position: relative;
-            width: calc(100% - 210px);
+            width: calc(100% - 320px);
             margin-left: 10px;
             height: 100%;
         }
@@ -110,34 +110,22 @@
 
         /* Video-Styling passend zum bisherigen Bild-Container */
         .video-holder{
-            width:75%;
-            height:100%;
-            border-top-left-radius:30px;
-            border-top-right-radius:10px;
-            border-bottom-left-radius:10px;
-            border-bottom-right-radius:10px;
-            border:5px solid #000;
-            box-sizing:border-box;
-            object-fit:contain;       /* bei Bedarf auf 'cover' ändern */
+            width: 75%;
+            height: 100%;
+            border-top-left-radius: 30px;
+            border-top-right-radius: 10px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            border: 5px solid #000;
+            box-sizing: border-box;
+            object-fit: contain;       /* bei Bedarf auf 'cover' ändern */
             background: white;          /* falls kein Stream, schwarzer Hintergrund */
         }
         
-        .video-holder-safe {
-        border:5px solid limegreen;
-        }
-        
-        .video-holder-unsafe {
-            border:5px solid red;
-        }
-    
-        .video-holder-empty {
-            border:5px solid black;
-        }
-        
-        .processed_video_holder {
+        .processed-video-holder {
             width: 100%;
             aspect-ratio: 1 / 1;
-            max-height: calc(100% - 55px);
+            max-height: calc(100% - 65px);
             border-top-left-radius: 10px;
             border-top-right-radius: 30px;
             border-bottom-left-radius: 10px;
@@ -148,15 +136,75 @@
             background-size: contain;
             background-position: center center;
             background-repeat: no-repeat;
+            overflow: hidden;
+        }
+        
+        .result-holder {
+            width: 100%;
+            display: flex;
+            flex-grow: 1;
+            flex-direction: row;
+            border: solid black 5px;
+            box-sizing: border-box;
+            border-radius: 10px;
+            margin-top: 10px;
+            align-content: center;
+            justify-content: center;
+        }
+        
+        .result-text {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-family: Arial, Helvetica, sans-serif;
+            text-align: center;
+            color: black;
+        }
+        
+        .fps-counter {
+            height: 100%;
+            width: 100px;
+            border: solid 5px black;
+            border-radius: 10px;
+            border-bottom-right-radius: 30px;
+            margin-left: 10px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            font-family: Arial, Helvetica, sans-serif;
+            color: black;
+        }
+        
+        .video-holder-safe {
+            border:5px solid limegreen;
+        }
+        
+        .video-holder-unsafe {
+            border:5px solid red;
+        }
+        
+        .video-holder-empty {
+            border:5px solid black;
         }
     </style>
 </head>
 <body style="padding: 30px; height: 100vh; width: 100vw; box-sizing: border-box; border: none;">
-    <div style="height: calc(100% - 110px); display: flex; flex-direction: row;">
+    <div style="height: calc(100% - 110px); width: 100%; display: flex; flex-direction: row;">
         <video id="video-holder" class="video-holder" autoplay muted playsinline></video>
-        <div style="width: calc(35% - 10px); height: 100%; margin-left: 10px; display: flex; flex-direction: column;">
-            <div id="processed_video_holder" class="processed_video_holder"></div>
-            <div class=""></div>
+        <div style="width: calc(35% - 10px); height: 100%; margin-left: 10px; display: flex; flex-direction: column; box-sizing: border-box;">
+            <div id="processed-video-holder" class="processed-video-holder">
+                <canvas id="canvas" width="224" height="224" style="width: 100%; display: block;"></canvas>
+            </div>
+            <div id="result-holder" class="result-holder">
+                <div id="result-text" class="result-text">
+                    Waiting for input ...
+                </div>
+            </div>
         </div>
     </div>
     <div style="height: calc(100px); margin-top: 10px; display: flex; flex-direction: row;">
@@ -165,245 +213,22 @@
             <span class="slider round"></span>
         </label>
         <div class="file-input-wrapper">
-            <label class="file-input-label">Upload File</label>
-            <input type="file" id="file-input">
+            <label class="file-input-label">Upload Image</label>
+            <input type="file" id="image-input">
+        </div>
+        <div class="fps-counter">
+            <div id="fps-counter-text" style="font-size: 15px; font-family: Arial, Helvetica, sans-serif; text-align: center; color: black;">... FPS</div>
         </div>
     </div>
-    <script src="https://unpkg.com/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script>
-        const videoEl   = document.getElementById('video-holder');
-        const camToggle = document.getElementById('cam-toggle');
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <!--<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.22.0/dist/tf-backend-webgl.min.js"></script>--<should be included by default, uncomment when needed-->
 
-        let currentStream = null;
-
-        async function startCamera(){
-            // Stoppe evtl. alte Streams sauber
-            stopCamera();
-
-            try {
-                const constraints = {
-                    video: {
-                        facingMode: "user",         // Frontkamera auf Mobilgeräten
-                        width: { ideal: 1280 },
-                        height:{ ideal: 720 }
-                    },
-                audio: false                  // auf true setzen, wenn Ton gewünscht ist
-                };
-
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                currentStream = stream;
-                videoEl.srcObject = stream;
-                // Autoplay-Hinweis: muted + playsinline sind gesetzt
-
-                const stopLoop = startFrameLoop(
-                    document.getElementById('video-holder'),
-                    (imgData, canvas) => {
-                        // console.log(imgData); // or send it somewhere
-                    }
-                );
-            } catch (err) {
-                camToggle.checked = false;
-                console.error(err);
-                alert(
-                    (location.protocol !== 'https:' && location.hostname !== 'localhost')
-                    ? 'getUserMedia erfordert HTTPS oder localhost.'
-                    : 'Kamera konnte nicht gestartet werden. Prüfe Berechtigungen und Geräte.'
-                );
-            }
-        }
-
-        function stopCamera(){
-            if (currentStream){
-                currentStream.getTracks().forEach(t => t.stop());
-                currentStream = null;
-                videoEl.srcObject = null;
-                
-                const stopLoop = startFrameLoop(
-                    document.getElementById('video-holder'),
-                    (imgData, canvas) => {
-                        // console.log(imgData); // or send it somewhere
-                    }
-                );
-            }
-        }
-
-        // Toggle steuert Kamera
-        camToggle.addEventListener('change', () => {
-            if (camToggle.checked) startCamera(); else stopCamera();
-        });
-
-        // Optional: beim Laden NICHT automatisch starten – User soll togglen.
-        // Wenn du automatisch starten willst, einfach:
-        // window.addEventListener('load', () => { camToggle.checked = true; startCamera(); });
-
-        // (Optional) Nette Kleinigkeit: auf Größenänderungen reagieren
-        window.addEventListener('beforeunload', stopCamera);
-
-        function startFrameLoop(videoEl, callback) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = 64;
-            canvas.height = 64;
-
-            // Replace any existing content
-            processedDiv = document.getElementById('processed_video_holder');
-            processedDiv.innerHTML = '';
-            processedDiv.appendChild(canvas);
-
-            let running = true;
-
-            function loop() {
-                if (!running) return;
-
-                // Draw the video frame scaled to 224x224
-                ctx.drawImage(videoEl, 0, 0, 224, 224);
-
-                // Get the scaled image data
-                const imgData = ctx.getImageData(0, 0, 224, 224);
-
-                // Send the data to the callback
-                callback(imgData, canvas);
-
-                requestAnimationFrame(loop);
-            }
-
-            loop();
-
-            // Return a function to stop the loop
-            return () => { running = false; };
-        }
+    <script src="../../test_model.js"></script>
 
 
 
 
-
-
-
-        // ------------------------------------------------------------------------------------------
-        // - Classification logic -------------------------------------------------------------------
-        // ------------------------------------------------------------------------------------------
-        const MODEL_PATH = '/models/V_0_6/model.json';
-        const META_PATH  = 'models/V_0_6/labels.json';
-        let model = undefined;
-        let META  = { classes: ['unsafe','safe','empty'], img_size: 224 };
-        let IMG_SIZE = 64;
-        let CLASSES  = META.classes;
-
-        async function loadModelAndMeta() {
-            try {
-                const res = await fetch(META_PATH);
-                if (res.ok) {
-                    META = await res.json();
-                    if (Array.isArray(META.classes)) CLASSES = META.classes;
-                    if (typeof META.img_size === 'number') IMG_SIZE = META.img_size;
-                }
-            } catch (e) { console.warn('Failed to load labels.json, using defaults.', e); }
-            model = await tf.loadLayersModel(MODEL_PATH);
-            console.log('TFJS model loaded:', MODEL_PATH, 'img_size=', IMG_SIZE, 'classes=', CLASSES);
-        }
-
-        function updateBorder(topLabel) {
-            videoEl.classList.remove('video-holder-safe', 'video-holder-unsafe', 'video-holder-empty');
-            if (String(topLabel).toLowerCase() === 'empty') {
-                videoEl.classList.add('video-holder-empty');
-                console.log("Empty");
-            } else if (String(topLabel).toLowerCase() === 'unsafe') {
-                videoEl.classList.add('video-holder-unsafe');
-                console.log("Unsafe");
-            } else {
-                videoEl.classList.add('video-holder-safe');
-                console.log("Safe");
-            }
-        }
-
-        function drawOverlay(ctx, probs) {
-            if (!probs || !probs.length) return;
-            const w = ctx.canvas.width, h = ctx.canvas.height;
-            ctx.save();
-            ctx.fillStyle = 'rgba(0,0,0,0.5)';
-            ctx.fillRect(0, 0, w, Math.max(30, 16 * CLASSES.length + 10));
-            ctx.fillStyle = 'white';
-            ctx.font = '12px sans-serif';
-            let y = 16;
-            let maxIdx = 0, maxVal = -1;
-            for (let i = 0; i < probs.length; i++) { if (probs[i] > maxVal) { maxVal = probs[i]; maxIdx = i; } }
-            for (let i = 0; i < probs.length; i++) {
-                const p = probs[i];
-                const label = (CLASSES[i] !== undefined) ? CLASSES[i] : ('class ' + i);
-                const star = (i === maxIdx) ? '★ ' : '';
-                ctx.fillText(`${star}${label}: ${(p*100).toFixed(1)}%`, 8, y);
-                y += 16;
-            }
-            ctx.restore();
-        }
-
-        async function classifyFrameFromCanvas(canvas) {
-            if (!model) return null;
-            // IMPORTANT: Do not return a Promise from inside tf.tidy().
-            // Create the tensor inside tidy, return a TENSOR, then await .data() outside.
-            const probsTensor = tf.tidy(() => {
-                const input = tf.browser.fromPixels(canvas)
-                    .resizeNearestNeighbor([IMG_SIZE, IMG_SIZE])
-                    .toFloat()
-                    .div(255)
-                    .expandDims(0);
-                const logits = model.predict(input);
-                const t = Array.isArray(logits) ? logits[0] : logits; // ensure Tensor
-                // Apply softmax unconditionally; if the model already has softmax, this is idempotent for most cases.
-                return tf.softmax(t);
-            });
-            const probsArr = await probsTensor.data();
-            probsTensor.dispose();
-            return Array.from(probsArr);
-        }
-
-        // Replace startFrameLoop to use dynamic IMG_SIZE and run inference
-        function startFrameLoop(videoEl, callback) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = IMG_SIZE;
-            canvas.height = IMG_SIZE;
-
-            processedDiv = document.getElementById('processed_video_holder');
-            processedDiv.innerHTML = '';
-            processedDiv.appendChild(canvas);
-
-            let running = true;
-
-            async function loop() {
-                if (!running) return;
-                ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
-                let probs = null;
-                try {
-                    probs = await classifyFrameFromCanvas(canvas);
-                } catch (e) {
-                    // swallow inference errors for robustness
-                }
-                if (probs) {
-                    // Determine top class
-                    let maxIdx = 0, maxVal = -1;
-                    for (let i = 0; i < probs.length; i++) { if (probs[i] > maxVal) { maxVal = probs[i]; maxIdx = i; } }
-                    const topLabel = (CLASSES[maxIdx] !== undefined) ? CLASSES[maxIdx] : ('class ' + maxIdx);
-                    updateBorder(topLabel);
-                    drawOverlay(ctx, probs);
-                }
-
-                // If a callback was provided, pass raw ImageData too
-                if (typeof callback === 'function') {
-                    const imgData = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE);
-                    try { callback(imgData, canvas); } catch (e) {}
-                }
-
-                requestAnimationFrame(loop);
-            }
-
-            loop();
-            return () => { running = false; };
-        }
-
-        // Kick off loading
-        loadModelAndMeta();
-    </script>
+    <!--<script src="../../old/test_model_V2.js"></script>-->
 </body>
 </html>
 
