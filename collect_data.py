@@ -483,7 +483,8 @@ if __name__ == "__main__":
 
     run_counter = 0 # Counts how many images where stored in this run
 
-    for SUBREDDIT, CATEGORY in subreddits:
+    # for SUBREDDIT, CATEGORY in subreddits:
+    for SUBREDDIT, CATEGORY in safe_only_subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)

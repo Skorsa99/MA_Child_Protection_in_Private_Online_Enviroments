@@ -5,8 +5,8 @@ from pathlib import Path
 from custom_logging import log_data_filtering, image_tally
 
 app = Flask(__name__)
-MODE = "TESTS"
-SUBREDDIT = "selfies_Test"
+MODE = "unsafe"
+SUBREDDIT = "AsianNSFW"
 IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")  # oder dein Bildpfad
 image_list = sorted([f for f in IMAGE_DIR.iterdir() if f.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 current_index = 0
@@ -84,4 +84,5 @@ def previous_image():
     return jsonify({"filename": filename})
 
 if __name__ == "__main__":
+    # launch by: 'python verify_data.py'
     app.run(debug=True)

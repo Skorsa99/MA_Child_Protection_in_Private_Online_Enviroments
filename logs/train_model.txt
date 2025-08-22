@@ -2586,3 +2586,63 @@
 2025-08-18 12:52:10 | Starting initial training phase
 2025-08-18 12:58:37 | Saved labels.json with 3 entries.
 2025-08-18 12:58:37 | Training finished
+2025-08-19 21:19:05 | Started prozess for training Version: V_0_31
+2025-08-19 21:19:18 | Settings:
+2025-08-19 21:19:18 | Image Size:             224
+2025-08-19 21:19:18 | Image Normalization:    resize
+2025-08-19 21:19:18 | Epochs:                 1
+2025-08-19 21:19:18 | Finetune Epochs:        0
+2025-08-19 21:19:18 | Batch Size:             64
+2025-08-19 21:19:18 | Base Learning Rate:     0.0001
+2025-08-19 21:19:18 | Finetune Learning Rate: 1e-05
+2025-08-19 21:19:18 | Dropout:                0.2
+2025-08-19 21:19:18 | Unfreeze From:          -20
+2025-08-19 21:19:18 | Patience:               5
+2025-08-19 21:19:18 | Label Smoothing:        0.0
+2025-08-19 21:19:18 | Seed:                   42
+2025-08-19 21:19:18 | Classes:                3
+2025-08-19 21:19:18 | Starting initial training phase
+2025-08-19 21:29:35 | TEST — loss: 3.2957, acc: 0.2273
+2025-08-19 21:29:36 | Saved labels.json with 3 entries.
+2025-08-19 21:29:36 | Training finished
+2025-08-20 14:15:48 | Started prozess for training Version: V_1_0
+2025-08-20 14:16:01 | Settings:
+2025-08-20 14:16:01 | Image Size:             224
+2025-08-20 14:16:01 | Image Normalization:    resize
+2025-08-20 14:16:01 | Epochs:                 25
+2025-08-20 14:16:01 | Finetune Epochs:        5
+2025-08-20 14:16:01 | Batch Size:             64
+2025-08-20 14:16:01 | Base Learning Rate:     0.0001
+2025-08-20 14:16:01 | Finetune Learning Rate: 1e-05
+2025-08-20 14:16:01 | Dropout:                0.2
+2025-08-20 14:16:01 | Unfreeze From:          -20
+2025-08-20 14:16:01 | Patience:               5
+2025-08-20 14:16:01 | Label Smoothing:        0.0
+2025-08-20 14:16:01 | Seed:                   42
+2025-08-20 14:16:01 | Classes:                3
+2025-08-20 14:16:01 | Starting initial training phase
+2025-08-20 17:45:34 | Starting fine-tuning phase
+2025-08-20 18:55:54 | TEST — loss: 1.7456, acc: 0.5296
+2025-08-20 18:55:54 | Saved labels.json with 3 entries.
+2025-08-20 18:55:54 | Training finished
+2025-08-21 14:25:21 | Started prozess for training Version: V_1_1
+2025-08-21 17:43:32 | Started prozess for training Version: V_1_2
+2025-08-21 17:43:45 | Settings:
+2025-08-21 17:43:45 | Image Size:             224
+2025-08-21 17:43:45 | Image Normalization:    resize
+2025-08-21 17:43:45 | Epochs:                 25
+2025-08-21 17:43:45 | Finetune Epochs:        5
+2025-08-21 17:43:45 | Batch Size:             64
+2025-08-21 17:43:45 | Base Learning Rate:     0.0001
+2025-08-21 17:43:45 | Finetune Learning Rate: 1e-05
+2025-08-21 17:43:45 | Dropout:                0.2
+2025-08-21 17:43:45 | Unfreeze From:          -20
+2025-08-21 17:43:45 | Patience:               5
+2025-08-21 17:43:45 | Label Smoothing:        0.0
+2025-08-21 17:43:45 | Seed:                   42
+2025-08-21 17:43:45 | Classes:                3
+2025-08-21 17:43:46 | Starting initial training phase
+2025-08-21 21:33:54 | Starting fine-tuning phase
+2025-08-21 22:24:52 | TEST — loss: 1.8359, acc: 0.5069
+2025-08-21 22:24:52 | Saved labels.json with 3 entries.
+2025-08-21 22:24:52 | Training finished

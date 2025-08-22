@@ -122,6 +122,5 @@ def remove_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
 
 
 if __name__ == "__main__":
-    # Optional CLI usage: python remove_duplicates.py [root_dir]
-    arg_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    arg_dir = "data/reddit_pics"
     remove_duplicates(arg_dir)

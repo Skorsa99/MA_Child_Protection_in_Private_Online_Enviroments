@@ -2,7 +2,9 @@ import os, json, math, re, csv, sys
 
 os.environ['TF_USE_LEGACY_KERAS'] = '1'
 
+import random
 import matplotlib
+import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from collections import Counter
@@ -22,22 +24,22 @@ from custom_logging import log_data_training
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Config --------------------------------------------------------------------------------------------------------------------------
 # -----------------------------------------------------------------------------------------------------------------------------------
-MAIN_VERSION = 0
+MAIN_VERSION = 1
 
-MANIFEST_PATH = "data/manifests/V002_80_10_10_per_source/manifest.jsonl" # Holds the Path to the manifest
+MANIFEST_PATH = "data/manifests/V003_80_10_10_per_source/manifest.jsonl" # Holds the Path to the manifest
 BASE_PATH = "data/reddit_pics" # Holds the Path to the basefolder that contains the image data
 ACCEPTED_EXTS = (".jpeg", ".png", ".bmp")  # ← no .webp
 
 IMG_SIZE         = 224                  # Size of each image (squared)
 IMAGE_NORMALIZER = "resize"             # "resize", "crop", "bars"
-EPOCHS           = 1
-FINETUNE_EPOCHS  = 0
+EPOCHS           = 25
+FINETUNE_EPOCHS  = 0                    # Keep this at 0, right now fine tuning seems to cause issues
 BATCH_SIZE       = 64
 BASE_LR          = 1e-4
 FINE_TUNE_LR     = 1e-5
 DROPOUT          = 0.2
 UNFREEZE_FROM    = -20                  # last N layers of the base model
-PATIENCE         = 3                    # early stopping
+PATIENCE         = 5                    # early stopping
 LABEL_SMOOTHING  = 0.0                  # e.g. 0.05 if you want it
 SEED             = 42                   # Seed for reproducability
 tf.keras.utils.set_random_seed(SEED)
@@ -222,6 +224,57 @@ def save_history_artifacts(history, out_dir: str):
         plt.savefig(os.path.join(out_dir, f"{m}.png"), dpi=160)
         plt.close()
 
+def _show_examples(ds, class_names, n_per_class=10):
+    """
+    Display n_per_class images for each class in columns.
+    - ds: tf.data.Dataset yielding (images, labels), already preprocessed.
+    - class_names: list like ['unsafe','neutral','safe'] (index -> name).
+    - n_per_class: how many rows per class (default: 10).
+    """
+    num_classes = len(class_names)
+    buckets = {i: [] for i in range(num_classes)}
+
+    # Collect up to n_per_class per class by scanning the dataset
+    for batch_imgs, batch_labels in ds:
+        imgs = batch_imgs.numpy()
+        labs = batch_labels.numpy()
+        for img, y in zip(imgs, labs):
+            y = int(y)
+            if y in buckets and len(buckets[y]) < n_per_class:
+                buckets[y].append(img)
+        if all(len(buckets[c]) >= n_per_class for c in range(num_classes)):
+            break
+
+    # Prepare the figure
+    fig, axes = plt.subplots(n_per_class, num_classes, figsize=(3.2*num_classes, 2.2*n_per_class))
+    if n_per_class == 1:
+        axes = np.expand_dims(axes, axis=0)
+    if num_classes == 1:
+        axes = np.expand_dims(axes, axis=1)
+
+    # Plot each column = one class
+    for c in range(num_classes):
+        samples = buckets[c]
+        # If fewer than requested exist, pad with blanks
+        while len(samples) < n_per_class:
+            samples.append(None)
+
+        for r in range(n_per_class):
+            ax = axes[r, c]
+            ax.axis("off")
+            if r == 0:
+                ax.set_title(class_names[c], fontsize=12)
+            img = samples[r]
+            if img is None:
+                continue
+            # MobileNet preprocess_input put values in [-1,1]; convert back for display
+            disp = (img + 1.0) / 2.0
+            disp = np.clip(disp, 0, 1)
+            ax.imshow(disp)
+
+    plt.tight_layout()
+    plt.show()
+
 
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Mainfunction --------------------------------------------------------------------------------------------------------------------
@@ -250,16 +303,36 @@ def main():
     val_pairs   = _get_pairs(manifest, "val")
     test_pairs  = _get_pairs(manifest, "test")
 
+    def _counts(pairs): return dict(sorted(Counter(y for _,y in pairs).items())) # -----------------------------
+    print("train_prefiltered:", _counts(train_pairs)) # --------------------------------------------------------
+    print("val_prefiltered:  ", _counts(val_pairs)) # ----------------------------------------------------------
+    print("test_prefiltered: ", _counts(test_pairs)) # ---------------------------------------------------------
+
     # Pre-scan (drops bad files fast, parallel)
     train_pairs = _filter_invalid_pairs(train_pairs, max_workers=8)
     val_pairs   = _filter_invalid_pairs(val_pairs,   max_workers=8)
     test_pairs  = _filter_invalid_pairs(test_pairs,  max_workers=8)
 
+    print("train_filtered:", _counts(train_pairs)) # -----------------------------------------------------------
+    print("val_filtered:  ", _counts(val_pairs)) # -------------------------------------------------------------
+    print("test_filtered: ", _counts(test_pairs)) # ------------------------------------------------------------
+
+    labels_train = sorted({y for _,y in train_pairs}) # --------------------------------------------------------
+    labels_val   = sorted({y for _,y in val_pairs}) # ----------------------------------------------------------
+    labels_test  = sorted({y for _,y in test_pairs}) # ---------------------------------------------------------
+    print("labels_train:", labels_train) # ---------------------------------------------------------------------
+    print("labels_val:  ", labels_val) # -----------------------------------------------------------------------
+    print("labels_test: ", labels_test) # ----------------------------------------------------------------------
+
     print("created pairs---------------------------------------------------------------------------")
+    
+    labels = _labels_from_manifest(manifest)
 
     train_ds = _make_dataset(train_pairs, training=True)
     val_ds   = _make_dataset(val_pairs,   training=False)
     test_ds  = _make_dataset(test_pairs,  training=False)
+
+    # _show_examples(train_ds, labels, n_per_class=10)
 
     steps_per_epoch = math.ceil(len(train_pairs) / BATCH_SIZE) if train_pairs else 0
     val_steps       = math.ceil(len(val_pairs) / BATCH_SIZE)   if val_pairs else 0
@@ -268,6 +341,9 @@ def main():
 
     num_classes = _num_classes_from_pairs(train_pairs)
     class_weights = _class_weights_from_pairs(train_pairs)
+
+    print()
+    print("class_weights:", class_weights)   # should be {0:...,1:...,2:...}
 
     log_data_training("Settings:")
     log_data_training(f"Image Size:             {IMG_SIZE}")
@@ -301,6 +377,7 @@ def main():
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     model.compile(
         optimizer=optimizers.Adam(learning_rate=BASE_LR),
+        # loss=losses.SparseCategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
         loss=losses.SparseCategoricalCrossentropy(),  # no label_smoothing
         metrics=["accuracy"]
     )
@@ -321,6 +398,19 @@ def main():
         validation_steps=val_steps,
     )
 
+    last = model.layers[-1] # -----------------------------------------------------------------------
+    W, b = last.get_weights() # ---------------------------------------------------------------------
+    print("last-layer bias:", np.round(b, 4))  # z.B. [ -0.12  1.95  -0.88 ] # ----------------------
+
+    y_true, y_pred, maxp = [], [], [] # -------------------------------------------------------------
+    for x, y in val_ds: # ---------------------------------------------------------------------------
+        p = model.predict(x, verbose=0) # -----------------------------------------------------------
+        y_true.extend(y.numpy()) # ------------------------------------------------------------------
+        y_pred.extend(p.argmax(axis=1)) # -----------------------------------------------------------
+        maxp.extend(p.max(axis=1)) # ----------------------------------------------------------------
+    print("mean max prob:", float(np.mean(maxp))) # -------------------------------------------------
+    print("share predicted class==1:", float((np.array(y_pred)==1).mean())) # -----------------------
+
     save_history_artifacts(history, out_dir=version_dir)
 
     # ----------------------------------------------------------
@@ -336,7 +426,8 @@ def main():
 
         model.compile(
             optimizer=optimizers.Adam(learning_rate=FINE_TUNE_LR),
-            loss=losses.SparseCategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
+            # loss=losses.SparseCategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
+            loss=losses.SparseCategoricalCrossentropy(),
             metrics=["accuracy"]
         )
 
@@ -351,7 +442,31 @@ def main():
             validation_steps=val_steps,
         )
 
+        last = model.layers[-1] # -----------------------------------------------------------------------
+        W, b = last.get_weights() # ---------------------------------------------------------------------
+        print("last-layer bias:", np.round(b, 4))  # z.B. [ -0.12  1.95  -0.88 ] # ----------------------
+
+        y_true, y_pred, maxp = [], [], [] # -------------------------------------------------------------
+        for x, y in val_ds: # ---------------------------------------------------------------------------
+            p = model.predict(x, verbose=0) # -----------------------------------------------------------
+            y_true.extend(y.numpy()) # ------------------------------------------------------------------
+            y_pred.extend(p.argmax(axis=1)) # -----------------------------------------------------------
+            maxp.extend(p.max(axis=1)) # ----------------------------------------------------------------
+        print("mean max prob:", float(np.mean(maxp))) # -------------------------------------------------
+        print("share predicted class==1:", float((np.array(y_pred)==1).mean())) # -----------------------
+
         save_history_artifacts(fine_tune_history, out_dir=version_dir)
+
+    # ----------------------------------------------------------
+    # Evaluate Model
+    # ----------------------------------------------------------
+    if test_pairs:
+        print("Evaluating on test set…")
+        test_steps = math.ceil(len(test_pairs) / BATCH_SIZE)
+        test_loss, test_acc = model.evaluate(test_ds, steps=test_steps, verbose=1)
+        log_data_training(f"TEST — loss: {test_loss:.4f}, acc: {test_acc:.4f}")
+    else:
+        print("No test data found — skipping test evaluation.")
 
     # ----------------------------------------------------------
     # Save final model
@@ -361,7 +476,6 @@ def main():
     tfjs.converters.save_keras_model(model, os.path.join(version_dir, "model_tfjs"))
 
     # Create labels.json
-    labels = _labels_from_manifest(manifest)
     with open(os.path.join(version_dir, "model_tfjs", "labels.json"), "w", encoding="utf-8") as f:
         json.dump(labels, f, indent=2, ensure_ascii=False)
     log_data_training(f"Saved labels.json with {len(labels)} entries.")

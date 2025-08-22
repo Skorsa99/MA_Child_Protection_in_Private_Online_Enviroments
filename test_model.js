@@ -52,7 +52,7 @@ async function startVideoProcessing() {
     };
 
     drawFrame();
-    classifyFromCameraLoop(); // 🔥 startet parallele Klassifikation
+    classifyFromCameraLoop_V2(); // 🔥 startet parallele Klassifikation
 }
 
 function stopVideoProcessing() {
@@ -69,8 +69,8 @@ let model;
 let labels;
 
 async function loadModelAndLabels() {
-    model = await tf.loadLayersModel('../../models/V_0_30/model_tfjs/model.json');
-    const labelsRes = await fetch('../../models/V_0_30/model_tfjs/labels.json');
+    model = await tf.loadLayersModel('../../models/V_1_0/model_tfjs/model.json');
+    const labelsRes = await fetch('../../models/V_1_0/model_tfjs/labels.json');
     labels = await labelsRes.json();
     console.log("Model and labels loaded.");
 }
@@ -148,6 +148,8 @@ async function classifyFromCameraLoop() {
         const prediction = model.predict(inputTensor);
         const probs = await prediction.data();
 
+        console.log("Loaded labels:", labels);
+
         console.log("Predictions:", labels
             .map((l, i) => [l, probs[i]])
             .sort((a, b) => b[1] - a[1])
@@ -193,4 +195,93 @@ async function classifyFromCameraLoop() {
     }
 
     loop();
+}
+
+function preprocessFromVideo(videoEl) {
+    // Preprocessing for 224×224, need to be the same as training
+    const t = tf.browser.fromPixels(videoEl);                   // [H,W,3], RGB
+    const r = tf.image.resizeBilinear(t, [224, 224]);           // alignCorners=false by default (matches TF default)
+    const x = r.toFloat().div(127.5).sub(1.0);                  // MobileNetV2: [-1, 1]
+    const input = x.expandDims(0);                              // [1,224,224,3]
+    return input;
+}
+
+async function classifyFromCameraLoop_V2() {
+    if (!model || !labels) await loadModelAndLabels();
+
+    const ctx = canvas.getContext('2d');
+    const targetMs = 1000 / 1000; // ~1000 FPS inference if we want to limit fps
+    let lastInfer = 0;
+    let firstLogDone = false;
+
+    async function loop(ts) {
+        if (!videoStreamRunning) return;
+
+        // 1) Visualize exactly what the model sees
+        ctx.drawImage(videoEl, 0, 0, 224, 224);
+
+        // 2) Classify straight from the video element (not the canvas)
+        if (videoEl.readyState >= 2 && (ts - lastInfer) >= targetMs) {
+            const probs = await tf.tidy(() => {
+                const input = preprocessFromVideo(videoEl);
+                const pred = model.predict(input);        // softmax from Keras layers model
+                return pred.dataSync();            // ✅ TypedArray, no Promise
+            });
+
+            const topIdx = probs.indexOf(Math.max(...probs));
+
+            // One-time sanity logs
+            if (!firstLogDone) {
+                console.log("model units:", model.layers.at(-1).units, "labels length:", labels.length);
+                const sum = probs[0] + probs[1] + probs[2];
+                console.log("sum(probs) ~", sum.toFixed(4), "top:", labels[topIdx], "p=", probs[topIdx].toFixed(3));
+                firstLogDone = true;
+            }
+
+            // Update UI
+            result_display.textContent = labels
+                .map((l, i) => [l, probs[i]])
+                .sort((a, b) => b[1] - a[1])
+                .map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`)
+                .join(", ");
+
+            processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+            result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+
+            if (labels[topIdx] === "unsafe") {
+                processed_holder.classList.add("video-holder-unsafe");
+                result_display_holder.classList.add("video-holder-unsafe");
+            } else if (labels[topIdx] === "empty") {
+                processed_holder.classList.add("video-holder-empty");
+                result_display_holder.classList.add("video-holder-empty");
+            } else {
+                processed_holder.classList.add("video-holder-safe");
+                result_display_holder.classList.add("video-holder-safe");
+            }
+
+            // FPS counter logic
+            frames++;
+            const now = performance.now();
+            const elapsed = now - lastTime;
+            if (elapsed >= 1000) {
+                const fps = frames;
+                document.getElementById("fps-counter-text").innerText = `~ ${fps} FPS`;
+                if (fps >= 30) {
+                    document.getElementById("fps-counter-text").style.color = "limegreen";
+                } else if (fps >= 10) {
+                    document.getElementById("fps-counter-text").style.color = "orange";
+                } else {
+                    document.getElementById("fps-counter-text").style.color = "red";
+                }
+                frames = 0;
+                lastTime = now;
+            }
+
+            lastInfer = ts;
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    requestAnimationFrame(loop);
 }
