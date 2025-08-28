@@ -26,16 +26,16 @@ from custom_logging import log_data_training
 # -----------------------------------------------------------------------------------------------------------------------------------
 MAIN_VERSION = 1
 
-MANIFEST_PATH = "data/manifests/V003_80_10_10_per_source/manifest.jsonl" # Holds the Path to the manifest
+MANIFEST_PATH = "data/manifests/V005_70_20_10_per_source/manifest.jsonl" # Holds the Path to the manifest
 BASE_PATH = "data/reddit_pics" # Holds the Path to the basefolder that contains the image data
 ACCEPTED_EXTS = (".jpeg", ".png", ".bmp")  # ← no .webp
 
 IMG_SIZE         = 224                  # Size of each image (squared)
 IMAGE_NORMALIZER = "resize"             # "resize", "crop", "bars"
-EPOCHS           = 25
+EPOCHS           = 10
 FINETUNE_EPOCHS  = 0                    # Keep this at 0, right now fine tuning seems to cause issues
-BATCH_SIZE       = 64
-BASE_LR          = 1e-4
+BATCH_SIZE       = 265 # 64
+BASE_LR          = 5e-4 # 1e-4
 FINE_TUNE_LR     = 1e-5
 DROPOUT          = 0.2
 UNFREEZE_FROM    = -20                  # last N layers of the base model
@@ -147,6 +147,44 @@ def _preprocess_tf(path, label_id, training=False, img_size=IMG_SIZE, normalizer
     # MobileNetV3 expects [-1, 1]
     img = preprocess_input(img)
 
+    img.set_shape([img_size, img_size, 3])
+    return img, tf.cast(label_id, tf.int32)
+
+def _preprocess_tf_more_regulazation(path, label_id, training=False, img_size=IMG_SIZE, normalizer=IMAGE_NORMALIZER):
+    img_bytes = tf.io.read_file(path)
+    img = tf.io.decode_image(img_bytes, channels=3, expand_animations=False)
+
+    # size normalization (as you have it)
+    if normalizer == "resize":
+        img = tf.image.resize(img, (img_size, img_size), method="bilinear")
+    elif normalizer == "crop":
+        h = tf.shape(img)[0]; w = tf.shape(img)[1]
+        scale = tf.cast(img_size, tf.float32) / tf.cast(tf.minimum(h, w), tf.float32)
+        new_h = tf.cast(tf.round(tf.cast(h, tf.float32) * scale), tf.int32)
+        new_w = tf.cast(tf.round(tf.cast(w, tf.float32) * scale), tf.int32)
+        img = tf.image.resize(img, (new_h, new_w), method="bilinear")
+        img = tf.image.resize_with_crop_or_pad(img, img_size, img_size)
+    elif normalizer == "bars":
+        img = tf.image.resize_with_pad(img, img_size, img_size, method="bilinear")
+
+    img = tf.cast(img, tf.float32)
+
+    if training:
+        # jitter in [0..1], then scale back
+        x = tf.image.convert_image_dtype(img, tf.float32)            # [0..1]
+        x = tf.image.random_flip_left_right(x)
+        x = tf.image.random_brightness(x, max_delta=0.08)            # ±8% light
+        x = tf.image.random_contrast(x, lower=0.9, upper=1.1)        # ±10% contrast
+        x = tf.image.random_saturation(x, lower=0.9, upper=1.1)      # ±10% saturation
+        # optional tiny zoom/crop:
+        # pad 4px and random-crop back to 224
+        x = tf.image.resize_with_pad(x, img_size+4, img_size+4)
+        x = tf.image.random_crop(x, size=[img_size, img_size, 3])
+        x = tf.clip_by_value(x, 0.0, 1.0)
+        img = x * 255.0                                              # back to [0..255]
+
+    # now match MobileNetV2
+    img = tf.keras.applications.mobilenet_v2.preprocess_input(img)   # [-1, 1]
     img.set_shape([img_size, img_size, 3])
     return img, tf.cast(label_id, tf.int32)
 
@@ -366,12 +404,24 @@ def main():
     base_model = MobileNetV2(input_shape=(224, 224, 3), include_top=False, weights="imagenet")
     base_model.trainable = False  # Freeze initially
 
+    """ Previous model without the smaller head and aditional Dropout"""
     # inputs = tf.keras.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
     inputs = tf.keras.Input(shape=(IMG_SIZE, IMG_SIZE, 3), name="input_1")
     x = base_model(inputs, training=False)
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dropout(DROPOUT)(x)
     outputs = layers.Dense(num_classes, activation="softmax")(x)
+    """
+    # inputs = tf.keras.Input(shape=(IMG_SIZE, IMG_SIZE, 3))
+    inputs = tf.keras.Input(shape=(IMG_SIZE, IMG_SIZE, 3), name="input_1")
+    x = base_model(inputs, training=False)
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dropout(DROPOUT)(x)
+    x = layers.Dense(256, activation="relu")(x)       # larger head (more trainable parameters)
+    # x = layers.BatchNormalization()(x)                # might cause issues
+    # x = layers.Dropout(0.3)(x)                        # a bit more regularization
+    outputs = layers.Dense(num_classes, activation="softmax")(x)
+    """
 
     # model = tf.keras.Model(inputs, outputs)
     model = tf.keras.Model(inputs=inputs, outputs=outputs)

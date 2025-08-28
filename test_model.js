@@ -69,8 +69,8 @@ let model;
 let labels;
 
 async function loadModelAndLabels() {
-    model = await tf.loadLayersModel('../../models/V_1_0/model_tfjs/model.json');
-    const labelsRes = await fetch('../../models/V_1_0/model_tfjs/labels.json');
+    model = await tf.loadLayersModel('../../models/V_1_11/model_tfjs/model.json');
+    const labelsRes = await fetch('../../models/V_1_11/model_tfjs/labels.json');
     labels = await labelsRes.json();
     console.log("Model and labels loaded.");
 }

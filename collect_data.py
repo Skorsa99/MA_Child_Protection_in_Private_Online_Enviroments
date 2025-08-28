@@ -410,6 +410,27 @@ if __name__ == "__main__":
         ["gonewild", "unsafe"],
         ["ladybonersgonemild", "unsafe"],
 
+        ["SwimmingCostume", "unsafe"],
+        ["BodybuildingCycle", "unsafe"],
+        ["bodybuildingpics", "unsafe"],
+        ["bodybuilding", "unsafe"],
+        ["Dick", "unsafe"],
+        ["dickgirls", "unsafe"], # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
+        ["DicksOnBabes", "unsafe"], # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
+        ["DickSlips", "unsafe"],
+        ["cock", "unsafe"],
+        ["cockheadlovers", "unsafe"],
+        ["cockcompareing", "unsafe"],
+        ["CockOutline", "unsafe"],
+        ["schwanzshow", "unsafe"],
+        ["SchwanzgeileTiroler", "unsafe"],
+        ["bigblackcocks", "unsafe"],
+        ["BlackGirlsCentral", "unsafe"],
+
+        ["theratio", "unsafe"],
+        ["CuteLittleButts", "unsafe"],
+        ["CuteGirlsinPanties", "unsafe"],
+
         # --- safe ---
         ["selfies", "safe"],
         ["outfitoftheday", "safe"],
@@ -435,6 +456,8 @@ if __name__ == "__main__":
         ["UI_Design", "safe"],
         ["portraits", "safe"],
         ["whitetanktops", "safe"],
+
+        # ["cute_face", "safe"], # Likely banned
 
         # --- empty ---
         ["InteriorDesign", "empty"],
@@ -444,33 +467,10 @@ if __name__ == "__main__":
         ["SkyPorn", "empty"],
         ["MyRoom", "empty"],
     ]
-
-    safe_only_subreddits = [
-        # --- safe ---
-        ["selfies", "safe"],
-        ["outfitoftheday", "safe"],
-        ["malehairadvice", "safe"],
-        ["selfie", "safe"],
-        ["Outfits", "safe"],
-        ["TodayIWore", "safe"],
-        ["MakeupAddiction", "safe"],
-        ["malefashion", "safe"],
-        ["malegrooming", "safe"],
-        ["beards", "safe"],
-        ["FreeCompliments", "safe"],
-        ["over60selfies", "safe"],
-        ["50something", "safe"],
-        ["40something", "safe"],
-        ["blackladies", "safe"],
-        ["FreeAIHeadshots", "safe"],
-        ["headshots", "safe"],
-        ["medicalillustration", "safe"],
-        ["anatomicalart", "safe"],
-        ["Homescreens", "safe"],
-        
-        ["UI_Design", "safe"],
-        ["portraits", "safe"],
-        ["whitetanktops", "safe"],
+    subreddits_temp = [
+        ["theratio", "unsafe"],
+        ["CuteLittleButts", "unsafe"],
+        ["CuteGirlsinPanties", "unsafe"],
 
         # --- empty ---
         ["InteriorDesign", "empty"],
@@ -483,8 +483,7 @@ if __name__ == "__main__":
 
     run_counter = 0 # Counts how many images where stored in this run
 
-    # for SUBREDDIT, CATEGORY in subreddits:
-    for SUBREDDIT, CATEGORY in safe_only_subreddits:
+    for SUBREDDIT, CATEGORY in subreddits_temp:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)

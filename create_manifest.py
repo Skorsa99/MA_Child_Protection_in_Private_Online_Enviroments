@@ -56,7 +56,7 @@ from custom_logging import log_data_manifest
 
 DATASET_ROOT = Path("data/reddit_pics") # Root directory containing class folders (unsafe/safe/empty)
 CLASS_NAMES = ["unsafe", "safe", "empty"] # Class names (order defines label IDs). Must match subfolder names under DATASET_ROOT.
-SPLIT_RATIOS = {"train": 0.60, "val": 0.39, "test": 0.01} # Split ratios must sum to 1.0 (within small tolerance)
+SPLIT_RATIOS = {"train": 0.70, "val": 0.20, "test": 0.10} # Split ratios must sum to 1.0 (within small tolerance)
 # Split modes: "per_source" | "flat" | "keep_groups"
 SPLIT_MODE = "per_source"  # default spreads each source across train/val/test
 RANDOM_SEED = 42 # Random seed for reproducibility
