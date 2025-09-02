@@ -2814,3 +2814,236 @@
 2025-08-26 16:50:24 | TEST — loss: 1.5022, acc: 0.6793
 2025-08-26 16:50:25 | Saved labels.json with 3 entries.
 2025-08-26 16:50:25 | Training finished
+2025-08-29 12:00:35 | Started prozess for training Version: V_1_12
+2025-08-29 12:00:48 | Settings:
+2025-08-29 12:00:48 | Image Size:             224
+2025-08-29 12:00:48 | Image Normalization:    resize
+2025-08-29 12:00:48 | Epochs:                 10
+2025-08-29 12:00:48 | Finetune Epochs:        0
+2025-08-29 12:00:48 | Batch Size:             512
+2025-08-29 12:00:48 | Base Learning Rate:     0.0005
+2025-08-29 12:00:48 | Finetune Learning Rate: 1e-05
+2025-08-29 12:00:48 | Dropout:                0.2
+2025-08-29 12:00:48 | Unfreeze From:          -20
+2025-08-29 12:00:48 | Patience:               5
+2025-08-29 12:00:48 | Label Smoothing:        0.0
+2025-08-29 12:00:48 | Seed:                   42
+2025-08-29 12:00:48 | Classes:                3
+2025-08-29 12:00:48 | Starting initial training phase
+2025-08-29 13:41:25 | TEST — loss: 1.5457, acc: 0.6135
+2025-08-29 13:41:26 | Saved labels.json with 3 entries.
+2025-08-29 13:41:26 | Training finished
+2025-08-29 13:54:00 | Started prozess for training Version: V_1_13
+2025-08-29 13:54:14 | Settings:
+2025-08-29 13:54:14 | Image Size:             448
+2025-08-29 13:54:14 | Image Normalization:    resize
+2025-08-29 13:54:14 | Epochs:                 10
+2025-08-29 13:54:14 | Finetune Epochs:        0
+2025-08-29 13:54:14 | Batch Size:             265
+2025-08-29 13:54:14 | Base Learning Rate:     0.0005
+2025-08-29 13:54:14 | Finetune Learning Rate: 1e-05
+2025-08-29 13:54:14 | Dropout:                0.2
+2025-08-29 13:54:14 | Unfreeze From:          -20
+2025-08-29 13:54:14 | Patience:               5
+2025-08-29 13:54:14 | Label Smoothing:        0.0
+2025-08-29 13:54:14 | Seed:                   42
+2025-08-29 13:54:14 | Classes:                3
+2025-08-29 13:54:14 | Starting initial training phase
+2025-08-29 13:59:02 | Started prozess for training Version: V_1_13
+2025-08-29 13:59:15 | Settings:
+2025-08-29 13:59:15 | Image Size:             448
+2025-08-29 13:59:15 | Image Normalization:    resize
+2025-08-29 13:59:15 | Epochs:                 10
+2025-08-29 13:59:15 | Finetune Epochs:        0
+2025-08-29 13:59:15 | Batch Size:             265
+2025-08-29 13:59:15 | Base Learning Rate:     0.0005
+2025-08-29 13:59:15 | Finetune Learning Rate: 1e-05
+2025-08-29 13:59:15 | Dropout:                0.2
+2025-08-29 13:59:15 | Unfreeze From:          -20
+2025-08-29 13:59:15 | Patience:               5
+2025-08-29 13:59:15 | Label Smoothing:        0.0
+2025-08-29 13:59:15 | Seed:                   42
+2025-08-29 13:59:15 | Classes:                3
+2025-08-29 13:59:15 | Starting initial training phase
+2025-08-29 18:34:13 | last-layer bias: [-0.0215 -0.0017  0.0154]
+2025-08-29 18:34:13 | mean max prob: 0.8193683624267578
+2025-08-29 18:34:13 | share predicted class==1: 0.48155314757481943
+2025-08-29 18:37:09 | TEST — loss: 1.3306, acc: 0.5768
+2025-08-29 18:37:10 | Saved labels.json with 3 entries.
+2025-08-29 18:37:10 | Training finished
+2025-08-29 19:01:35 | Started prozess for training Version: V_1_14
+2025-08-29 19:01:48 | Settings:
+2025-08-29 19:01:48 | Image Size:             224
+2025-08-29 19:01:48 | Image Normalization:    resize
+2025-08-29 19:01:48 | Epochs:                 10
+2025-08-29 19:01:48 | Finetune Epochs:        0
+2025-08-29 19:01:48 | Batch Size:             265
+2025-08-29 19:01:48 | Base Learning Rate:     0.0005
+2025-08-29 19:01:48 | Finetune Learning Rate: 1e-05
+2025-08-29 19:01:48 | Dropout:                0.2
+2025-08-29 19:01:48 | Unfreeze From:          -20
+2025-08-29 19:01:48 | Patience:               5
+2025-08-29 19:01:48 | Label Smoothing:        0.0
+2025-08-29 19:01:48 | Seed:                   42
+2025-08-29 19:01:48 | Classes:                3
+2025-08-29 19:01:48 | Starting initial training phase
+2025-08-29 20:33:40 | last-layer bias: [-0.0093 -0.0127  0.0187]
+2025-08-29 20:33:40 | mean max prob: 0.8677652478218079
+2025-08-29 20:33:40 | share predicted class==1: 0.49707602339181284
+2025-08-29 20:34:42 | TEST — loss: 1.4835, acc: 0.6392
+2025-08-29 20:34:42 | Saved labels.json with 3 entries.
+2025-08-29 20:34:42 | Training finished
+2025-08-29 20:51:48 | Started prozess for training Version: V_1_15
+2025-08-29 20:52:00 | Settings:
+2025-08-29 20:52:00 | Image Size:             224
+2025-08-29 20:52:00 | Image Normalization:    resize
+2025-08-29 20:52:00 | Epochs:                 10
+2025-08-29 20:52:00 | Finetune Epochs:        0
+2025-08-29 20:52:00 | Batch Size:             265
+2025-08-29 20:52:00 | Base Learning Rate:     0.0005
+2025-08-29 20:52:00 | Finetune Learning Rate: 1e-05
+2025-08-29 20:52:00 | Dropout:                0.4
+2025-08-29 20:52:00 | Unfreeze From:          -20
+2025-08-29 20:52:00 | Patience:               5
+2025-08-29 20:52:00 | Label Smoothing:        0.0
+2025-08-29 20:52:00 | Seed:                   42
+2025-08-29 20:52:00 | Classes:                3
+2025-08-29 20:52:01 | Starting initial training phase
+2025-08-29 22:23:57 | last-layer bias: [-0.0106 -0.0142  0.0215]
+2025-08-29 22:23:57 | mean max prob: 0.8780957460403442
+2025-08-29 22:23:57 | share predicted class==1: 0.4794891640866873
+2025-08-29 22:24:57 | TEST — loss: 1.5120, acc: 0.6484
+2025-08-29 22:24:57 | Saved labels.json with 3 entries.
+2025-08-29 22:24:57 | Training finished
+2025-08-31 12:47:10 | Started prozess for training Version: V_1_16
+2025-08-31 12:47:23 | Settings:
+2025-08-31 12:47:23 | Image Size:             224
+2025-08-31 12:47:23 | Image Normalization:    resize
+2025-08-31 12:47:23 | Epochs:                 10
+2025-08-31 12:47:23 | Finetune Epochs:        0
+2025-08-31 12:47:23 | Batch Size:             265
+2025-08-31 12:47:23 | Base Learning Rate:     0.0005
+2025-08-31 12:47:23 | Finetune Learning Rate: 1e-05
+2025-08-31 12:47:23 | Dropout:                0.2
+2025-08-31 12:47:23 | Unfreeze From:          -20
+2025-08-31 12:47:23 | Patience:               5
+2025-08-31 12:47:23 | Label Smoothing:        0.0
+2025-08-31 12:47:23 | Seed:                   42
+2025-08-31 12:47:23 | Classes:                3
+2025-08-31 12:47:23 | Starting initial training phase
+2025-08-31 14:22:25 | last-layer bias: [-0.0107 -0.015   0.0231]
+2025-08-31 14:22:25 | mean max prob: 0.8842415809631348
+2025-08-31 14:22:25 | share predicted class==1: 0.4743292053663571
+2025-08-31 14:23:28 | TEST — loss: 1.4901, acc: 0.6606
+2025-08-31 14:23:28 | Saved labels.json with 3 entries.
+2025-08-31 14:23:28 | Training finished
+2025-08-31 14:36:20 | Started prozess for training Version: V_1_17
+2025-08-31 14:36:34 | Settings:
+2025-08-31 14:36:34 | Image Size:             224
+2025-08-31 14:36:34 | Image Normalization:    resize
+2025-08-31 14:36:34 | Epochs:                 10
+2025-08-31 14:36:34 | Finetune Epochs:        0
+2025-08-31 14:36:34 | Batch Size:             265
+2025-08-31 14:36:34 | Base Learning Rate:     0.0005
+2025-08-31 14:36:34 | Finetune Learning Rate: 1e-05
+2025-08-31 14:36:34 | Dropout:                0.2
+2025-08-31 14:36:34 | Unfreeze From:          -20
+2025-08-31 14:36:34 | Patience:               5
+2025-08-31 14:36:34 | Label Smoothing:        0.0
+2025-08-31 14:36:34 | Seed:                   42
+2025-08-31 14:36:34 | Classes:                3
+2025-08-31 14:36:35 | Starting initial training phase
+2025-08-31 15:58:42 | last-layer bias: [-0.0085 -0.0108  0.0155]
+2025-08-31 15:58:42 | mean max prob: 0.8499681353569031
+2025-08-31 15:58:42 | share predicted class==1: 0.49234606123151015
+2025-08-31 15:59:43 | TEST — loss: 1.4959, acc: 0.6194
+2025-08-31 15:59:44 | Saved labels.json with 3 entries.
+2025-08-31 15:59:44 | Training finished
+2025-08-31 17:06:58 | Started prozess for training Version: V_1_18
+2025-08-31 17:07:11 | Settings:
+2025-08-31 17:07:11 | Image Size:             224
+2025-08-31 17:07:11 | Image Normalization:    resize
+2025-08-31 17:07:11 | Epochs:                 30
+2025-08-31 17:07:11 | Finetune Epochs:        0
+2025-08-31 17:07:11 | Batch Size:             512
+2025-08-31 17:07:11 | Base Learning Rate:     0.0005
+2025-08-31 17:07:11 | Finetune Learning Rate: 1e-05
+2025-08-31 17:07:11 | Dropout:                0.2
+2025-08-31 17:07:11 | Unfreeze From:          -20
+2025-08-31 17:07:11 | Patience:               5
+2025-08-31 17:07:11 | Label Smoothing:        0.0
+2025-08-31 17:07:11 | Seed:                   42
+2025-08-31 17:07:11 | Classes:                3
+2025-08-31 17:07:11 | Starting initial training phase
+2025-08-31 19:50:24 | last-layer bias: [-0.0122 -0.0086  0.0203]
+2025-08-31 19:50:24 | mean max prob: 0.888007640838623
+2025-08-31 19:50:24 | share predicted class==1: 0.5614035087719298
+2025-08-31 19:51:28 | TEST — loss: 1.5329, acc: 0.6356
+2025-08-31 19:51:29 | Saved labels.json with 3 entries.
+2025-08-31 19:51:29 | Training finished
+2025-09-01 19:17:06 | Started prozess for training Version: V_1_19
+2025-09-01 19:17:19 | Settings:
+2025-09-01 19:17:19 | Image Size:             224
+2025-09-01 19:17:19 | Image Normalization:    resize
+2025-09-01 19:17:19 | Epochs:                 20
+2025-09-01 19:17:19 | Finetune Epochs:        0
+2025-09-01 19:17:19 | Batch Size:             265
+2025-09-01 19:17:19 | Base Learning Rate:     0.0005
+2025-09-01 19:17:19 | Finetune Learning Rate: 1e-05
+2025-09-01 19:17:19 | Dropout:                0.2
+2025-09-01 19:17:19 | Unfreeze From:          -20
+2025-09-01 19:17:19 | Patience:               5
+2025-09-01 19:17:19 | Label Smoothing:        0.0
+2025-09-01 19:17:19 | Seed:                   42
+2025-09-01 19:17:19 | Classes:                3
+2025-09-01 19:17:19 | Starting initial training phase
+2025-09-01 21:12:49 | last-layer bias: [-0.0111 -0.0145  0.0228]
+2025-09-01 21:12:49 | mean max prob: 0.8846868276596069
+2025-09-01 21:12:49 | share predicted class==1: 0.4735122119023048
+2025-09-01 21:13:49 | TEST — loss: 1.4541, acc: 0.6658
+2025-09-01 21:13:49 | Saved labels.json with 3 entries.
+2025-09-01 21:13:49 | Training finished
+2025-09-02 13:58:57 | Started prozess for training Version: V_1_20
+2025-09-02 13:59:11 | Settings:
+2025-09-02 13:59:11 | Image Size:             224
+2025-09-02 13:59:11 | Image Normalization:    resize
+2025-09-02 13:59:11 | Epochs:                 20
+2025-09-02 13:59:11 | Finetune Epochs:        0
+2025-09-02 13:59:11 | Batch Size:             265
+2025-09-02 13:59:11 | Base Learning Rate:     0.0005
+2025-09-02 13:59:11 | Finetune Learning Rate: 1e-05
+2025-09-02 13:59:11 | Dropout:                0.2
+2025-09-02 13:59:11 | Unfreeze From:          -20
+2025-09-02 13:59:11 | Patience:               5
+2025-09-02 13:59:11 | Label Smoothing:        0.0
+2025-09-02 13:59:11 | Seed:                   42
+2025-09-02 13:59:11 | Classes:                3
+2025-09-02 13:59:11 | Starting initial training phase
+2025-09-02 14:57:55 | last-layer bias: [-0.0099 -0.0009  0.0036]
+2025-09-02 14:57:55 | mean max prob: 0.9561534523963928
+2025-09-02 14:57:55 | share predicted class==1: 0.0015909872721018231
+2025-09-02 14:58:56 | TEST — loss: 5.4076, acc: 0.0855
+2025-09-02 14:58:57 | Saved labels.json with 3 entries.
+2025-09-02 14:58:57 | Training finished
+2025-09-02 16:46:23 | Started prozess for training Version: V_1_21
+2025-09-02 16:46:36 | Settings:
+2025-09-02 16:46:36 | Image Size:             224
+2025-09-02 16:46:36 | Image Normalization:    resize
+2025-09-02 16:46:36 | Epochs:                 20
+2025-09-02 16:46:36 | Finetune Epochs:        0
+2025-09-02 16:46:36 | Batch Size:             265
+2025-09-02 16:46:36 | Base Learning Rate:     0.0005
+2025-09-02 16:46:36 | Finetune Learning Rate: 1e-05
+2025-09-02 16:46:36 | Dropout:                0.2
+2025-09-02 16:46:36 | Unfreeze From:          -20
+2025-09-02 16:46:36 | Patience:               5
+2025-09-02 16:46:36 | Label Smoothing:        0.0
+2025-09-02 16:46:36 | Seed:                   42
+2025-09-02 16:46:36 | Classes:                3
+2025-09-02 16:46:36 | Starting initial training phase
+2025-09-02 17:42:23 | last-layer bias: [-0.0097 -0.001   0.0036]
+2025-09-02 17:42:23 | mean max prob: 0.9744137525558472
+2025-09-02 17:42:23 | share predicted class==1: 0.00030099759201926386
+2025-09-02 17:43:25 | TEST — loss: 5.8737, acc: 0.0850
+2025-09-02 17:43:26 | Saved labels.json with 3 entries.
+2025-09-02 17:43:26 | Training finished

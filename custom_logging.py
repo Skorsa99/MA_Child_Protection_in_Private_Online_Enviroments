@@ -107,3 +107,57 @@ def image_tally(number_images, category):
 
     updated_tally = data[f"image_count_{category}"]
     return updated_tally
+
+def image_tally_v2(folder, category):
+    """
+    Recursively count image files under `folder` and store the total count
+    in the same JSON structure as `image_tally`, under the key
+    `image_count_{category}`.
+
+    Returns the updated tally value.
+    """
+    # Normalize and validate folder path
+    if not folder or not isinstance(folder, str):
+        folder = ""
+
+    # Supported image extensions (case-insensitive)
+    image_exts = {
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+        ".tiff", ".tif", ".jfif", ".heic", ".heif"
+    }
+
+    count = 0
+    try:
+        if os.path.isdir(folder):
+            for root, _, files in os.walk(folder):
+                for fname in files:
+                    _, ext = os.path.splitext(fname)
+                    if ext.lower() in image_exts:
+                        count += 1
+        else:
+            # If folder doesn't exist, treat as empty
+            count = 0
+    except Exception:
+        # On unexpected errors during traversal, default to 0
+        count = 0
+
+    # Persist using the same file and key format as v1
+    file_path = 'logs/image_tally.json'
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    try:
+        with open(file_path, 'r') as json_file:
+            data = json.load(json_file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
+
+    key = f"image_count_{category}"
+    data[key] = count
+
+    try:
+        with open(file_path, 'w') as json_file:
+            json.dump(data, json_file)
+    except Exception as e:
+        print(f"Error writing to image tally file: {e}")
+
+    return data[key]

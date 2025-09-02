@@ -9,7 +9,7 @@ from pathlib import Path
 from html import unescape
 from urllib.parse import urlparse
 
-from custom_logging import log_data_collection, image_tally
+from custom_logging import log_data_collection, image_tally_v2
 
 # --- Allowed media types (centralized) ---
 ALLOWED_IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
@@ -467,23 +467,10 @@ if __name__ == "__main__":
         ["SkyPorn", "empty"],
         ["MyRoom", "empty"],
     ]
-    subreddits_temp = [
-        ["theratio", "unsafe"],
-        ["CuteLittleButts", "unsafe"],
-        ["CuteGirlsinPanties", "unsafe"],
-
-        # --- empty ---
-        ["InteriorDesign", "empty"],
-        ["AmateurRoomPorn", "empty"],
-        ["Workspaces", "empty"],
-        ["EarthPorn", "empty"],
-        ["SkyPorn", "empty"],
-        ["MyRoom", "empty"],
-    ]
 
     run_counter = 0 # Counts how many images where stored in this run
 
-    for SUBREDDIT, CATEGORY in subreddits_temp:
+    for SUBREDDIT, CATEGORY in subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)
@@ -492,7 +479,7 @@ if __name__ == "__main__":
 
         image_counter = image_counter - (error_rate + counter_ed + counter_e)
 
-        image_tally_variable = image_tally(image_counter, CATEGORY)
+        image_tally_variable = image_tally_v2(f'data/reddit_pics/{CATEGORY}', CATEGORY)
         if counter_e > 0:
             end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files [with {counter_e} unhandled errors]. Updated tally: {image_tally_variable}"
         else:
