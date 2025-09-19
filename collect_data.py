@@ -368,29 +368,29 @@ if __name__ == "__main__":
     # CATEGORY = unsafe | safe | empty
     subreddits = [
         # --- unsafe ---
-        ["Nudes", "unsafe"],
-        ["Nudes_Heaven", "unsafe"],
-        ["NudeSports", "unsafe"],
-        ["Nudeshoots", "unsafe"],
-        ["ChangingRooms", "unsafe"],
-        ["Flashing", "unsafe"],
-        ["Flashingmilfs", "unsafe"],
-        ["FlashingAndFlaunting", "unsafe"],
-        ["FlashingGirls", "unsafe"],
-        ["malesnude", "unsafe"],
-        ["MalenudesEU", "unsafe"],
-        ["MaleNudesInspiration", "unsafe"],
-        ["Bulges", "unsafe"],
-        ["Musk4Musk", "unsafe"],
-        ["GaybrosGoneWild", "unsafe"],
-        ["DarkAngels", "unsafe"],
-        ["blackmale", "unsafe"],
-        ["blackcock", "unsafe"],
-        ["sexyselfie", "unsafe"],
-        ["AsianNSFW", "unsafe"],
-        ["BigAsianCock", "unsafe"],
-        ["topless", "unsafe"],
-        ["ToplessInPublic", "unsafe"],
+        ["Nudes", "unsafe"], # Cleaned
+        ["Nudes_Heaven", "unsafe"], # Cleaned # (maybe not that great, has a lot of text in the images)
+        ["NudeSports", "unsafe"], # Cleaned
+        ["Nudeshoots", "unsafe"], # Cleaned
+        ["ChangingRooms", "unsafe"], # Cleaned
+        ["Flashing", "unsafe"], # Cleaned
+        ["Flashingmilfs", "unsafe"], # Cleaned
+        ["FlashingAndFlaunting", "unsafe"], # Cleaned
+        ["FlashingGirls", "unsafe"], # Cleaned
+        ["malesnude", "unsafe"], # Cleaned
+        ["MalenudesEU", "unsafe"], # Cleaned
+        ["MaleNudesInspiration", "unsafe"], # Cleaned
+        ["Bulges", "unsafe"], # Cleaned # this was awful, so many issues, dont run again
+        ["Musk4Musk", "unsafe"], # Cleaned
+        ["GaybrosGoneWild", "unsafe"], # Cleaned
+        ["DarkAngels", "unsafe"], # Cleaned
+        ["blackmale", "unsafe"], # Cleaned
+        ["blackcock", "unsafe"], # Cleaned
+        ["sexyselfie", "unsafe"], # Cleaned (a lot of errors, since this kinda defines the edge of what is acceptable [14,56%])
+        ["AsianNSFW", "unsafe"], # Cleaned
+        ["BigAsianCock", "unsafe"], # Cleaned
+        ["topless", "unsafe"], # Partly Checked (first 1000 images with 0.4% failure rate)
+        ["ToplessInPublic", "unsafe"], # Cleaned
         ["MaleUnderwear", "unsafe"],
         ["OldGuysRule", "unsafe"],
         ["GrannyOldWomen", "unsafe"],
@@ -468,9 +468,47 @@ if __name__ == "__main__":
         ["MyRoom", "empty"],
     ]
 
+    safe_only_subreddits = [
+        # --- safe ---
+        ["selfies", "safe"],
+        ["outfitoftheday", "safe"],
+        ["malehairadvice", "safe"],
+        ["selfie", "safe"],
+        ["Outfits", "safe"],
+        ["TodayIWore", "safe"],
+        ["MakeupAddiction", "safe"],
+        ["malefashion", "safe"],
+        ["malegrooming", "safe"],
+        ["beards", "safe"],
+        ["FreeCompliments", "safe"],
+        ["over60selfies", "safe"],
+        ["50something", "safe"],
+        ["40something", "safe"],
+        ["blackladies", "safe"],
+        ["FreeAIHeadshots", "safe"],
+        ["headshots", "safe"],
+        ["medicalillustration", "safe"],
+        ["anatomicalart", "safe"],
+        ["Homescreens", "safe"],
+        
+        ["UI_Design", "safe"],
+        ["portraits", "safe"],
+        ["whitetanktops", "safe"],
+
+        # ["cute_face", "safe"], # Likely banned
+
+        # --- empty ---
+        ["InteriorDesign", "empty"],
+        ["AmateurRoomPorn", "empty"],
+        ["Workspaces", "empty"],
+        ["EarthPorn", "empty"],
+        ["SkyPorn", "empty"],
+        ["MyRoom", "empty"],
+    ]
+
     run_counter = 0 # Counts how many images where stored in this run
 
-    for SUBREDDIT, CATEGORY in subreddits:
+    for SUBREDDIT, CATEGORY in safe_only_subreddits:
         SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)

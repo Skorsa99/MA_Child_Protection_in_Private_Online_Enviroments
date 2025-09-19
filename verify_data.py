@@ -6,9 +6,10 @@ from custom_logging import log_data_filtering, image_tally
 
 app = Flask(__name__)
 MODE = "unsafe"
-SUBREDDIT = "AsianNSFW"
+SUBREDDIT = "ToplessInPublic"
 IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")  # oder dein Bildpfad
 image_list = sorted([f for f in IMAGE_DIR.iterdir() if f.suffix.lower() in [".jpg", ".jpeg", ".png"]])
+TOTAL_AT_START = len(image_list)
 current_index = 0
 last_deleted = []
 
@@ -28,6 +29,22 @@ def get_next_image():
 @app.route('/image/<filename>')
 def get_image(filename):
     return send_from_directory(IMAGE_DIR, filename)
+
+@app.route('/progress')
+def get_progress():
+    total_baseline = TOTAL_AT_START
+    total_remaining = len(image_list)
+    # images processed = passed (current_index) + deleted so far (baseline - remaining)
+    checked = current_index + max(0, total_baseline - total_remaining)
+    if total_baseline <= 0:
+        percent = 100.0
+    else:
+        percent = (checked / float(total_baseline)) * 100.0
+    return jsonify({
+        "checked": int(checked),
+        "total": int(total_baseline),
+        "percent": float(percent)
+    })
 
 @app.route('/delete', methods=["POST"])
 def delete_image():

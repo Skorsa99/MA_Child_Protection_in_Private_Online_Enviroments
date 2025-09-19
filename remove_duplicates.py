@@ -117,7 +117,7 @@ def remove_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
 
     end_message = f"Removed {removed} pixel-identical duplicate image(s) in '{root.resolve()}'."
     print(end_message)
-    log_duplicate_remove(end_message, CATEGORY)
+    log_duplicate_remove(end_message)
     return removed
 
 

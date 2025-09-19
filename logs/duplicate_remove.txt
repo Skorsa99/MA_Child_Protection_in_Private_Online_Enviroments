@@ -1,0 +1,1 @@
+2025-09-03 16:00:00 | Removed 10778 pixel-identical duplicate image(s) in '/Users/samuelskorsetz/Documents/Studium/Master/ARiES/Project/SZ - NSFW Detections/Project 2 - Practical Part/MA_Child_Protection_in_Private_Online_Enviroments/data/reddit_pics'.
