@@ -3,7 +3,7 @@ import sys
 import shutil
 import hashlib
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Set, Iterable
 
 # PIL for pixel-based hashing (ignores metadata)
 try:
@@ -120,7 +120,53 @@ def remove_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
     log_duplicate_remove(end_message)
     return removed
 
+def count_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
+    """
+    Recursively walk `root_dir` and move *pixel-identical* images (duplicates) to a separate folder,
+    regardless of filename or metadata.
+
+    Returns the number of duplicate files it would have removed.
+    """
+    if root_dir is None:
+        root_dir = outer_dir
+
+    root = Path(root_dir)
+    if not root.exists():
+        print(f"Path does not exist: {root}")
+        return 0
+
+    # Image extensions to consider (lowercase)
+    img_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tif', '.tiff', '.webp', '.jfif', '.heic'}
+
+    seen_hashes: Dict[str, Path] = {}
+    would_be_removed = 0
+
+    for dirpath, _, filenames in os.walk(root):
+        for name in filenames:
+            p = Path(dirpath) / name
+            try:
+                if not p.is_file():
+                    continue
+                # Only consider likely image files by extension
+                if p.suffix.lower() not in img_exts:
+                    continue
+
+                digest = _pixel_hash(p)
+                if digest in seen_hashes:
+                    # Duplicate detected -> count this one
+                    would_be_removed += 1
+                else:
+                    seen_hashes[digest] = p
+            except Exception as e:
+                # Skip unreadable/problematic files but continue processing
+                print(f"Skipping {p}: {e}")
+
+    end_message = f"Counted {would_be_removed} pixel-identical duplicate image(s) in '{root.resolve()}'."
+    print(end_message)
+    return would_be_removed
+
 
 if __name__ == "__main__":
     arg_dir = "data/reddit_pics"
-    remove_duplicates(arg_dir)
+    # remove_duplicates(arg_dir)
+    count_duplicates(arg_dir)

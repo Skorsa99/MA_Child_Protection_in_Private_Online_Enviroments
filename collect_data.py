@@ -368,30 +368,30 @@ if __name__ == "__main__":
     # CATEGORY = unsafe | safe | empty
     subreddits = [
         # --- unsafe ---
-        ["Nudes", "unsafe"], # Cleaned
-        ["Nudes_Heaven", "unsafe"], # Cleaned # (maybe not that great, has a lot of text in the images)
-        ["NudeSports", "unsafe"], # Cleaned
-        ["Nudeshoots", "unsafe"], # Cleaned
-        ["ChangingRooms", "unsafe"], # Cleaned
-        ["Flashing", "unsafe"], # Cleaned
-        ["Flashingmilfs", "unsafe"], # Cleaned
-        ["FlashingAndFlaunting", "unsafe"], # Cleaned
-        ["FlashingGirls", "unsafe"], # Cleaned
-        ["malesnude", "unsafe"], # Cleaned
-        ["MalenudesEU", "unsafe"], # Cleaned
-        ["MaleNudesInspiration", "unsafe"], # Cleaned
-        ["Bulges", "unsafe"], # Cleaned # this was awful, so many issues, dont run again
-        ["Musk4Musk", "unsafe"], # Cleaned
-        ["GaybrosGoneWild", "unsafe"], # Cleaned
-        ["DarkAngels", "unsafe"], # Cleaned
-        ["blackmale", "unsafe"], # Cleaned
-        ["blackcock", "unsafe"], # Cleaned
+        ["Nudes", "unsafe"], # Cleaned (1,01% error rate)
+        ["Nudes_Heaven", "unsafe"], # Cleaned (19,77% error rate) # (maybe not that great, has a lot of text in the images)
+        ["NudeSports", "unsafe"], # Cleaned (4,41% error rate [only 227 images])
+        ["Nudeshoots", "unsafe"], # Cleaned (9,59% error rate [only 146 images])
+        ["ChangingRooms", "unsafe"], # Cleaned (10,05% error rate)
+        ["Flashing", "unsafe"], # Cleaned (8,97% error rate)
+        ["Flashingmilfs", "unsafe"], # Cleaned (4,42% error rate)
+        ["FlashingAndFlaunting", "unsafe"], # Cleaned (6,14% error rate)
+        ["FlashingGirls", "unsafe"], # Cleaned (7,06% error rate)
+        ["malesnude", "unsafe"], # Cleaned (0,38% error rate)
+        ["MalenudesEU", "unsafe"], # Cleaned (0,11% error rate)
+        ["MaleNudesInspiration", "unsafe"], # Cleaned (0,00% error rate [only 20 images])
+        ["Bulges", "unsafe"], # Cleaned (14,83% error rate) # this was awful, so many issues, dont run again
+        ["Musk4Musk", "unsafe"], # Cleaned (7,18% error rate)
+        ["GaybrosGoneWild", "unsafe"], # Cleaned (4,72% error rate)
+        ["DarkAngels", "unsafe"], # Cleaned (2,34% error rate)
+        ["blackmale", "unsafe"], # Cleaned (2,61% error rate)
+        ["blackcock", "unsafe"], # Cleaned (2,69% error rate)
         ["sexyselfie", "unsafe"], # Cleaned (a lot of errors, since this kinda defines the edge of what is acceptable [14,56%])
-        ["AsianNSFW", "unsafe"], # Cleaned
-        ["BigAsianCock", "unsafe"], # Cleaned
+        ["AsianNSFW", "unsafe"], # Cleaned (2,48% error rate)
+        ["BigAsianCock", "unsafe"], # Cleaned (1,16% error rate)
         ["topless", "unsafe"], # Partly Checked (first 1000 images with 0.4% failure rate)
-        ["ToplessInPublic", "unsafe"], # Cleaned
-        ["MaleUnderwear", "unsafe"], # Cleaned
+        ["ToplessInPublic", "unsafe"], # Cleaned (1,72% error rate)
+        ["MaleUnderwear", "unsafe"], # Cleaned (2,39% error rate)
         ["OldGuysRule", "unsafe"], # Cleaned (1,04% error rate)
         ["GrannyOldWomen", "unsafe"], # Cleaned (13,34% error rate)
         ["pornstarsinswimwear", "unsafe"], # Partly Checked (first 1000 images with 0.0% failure rate)

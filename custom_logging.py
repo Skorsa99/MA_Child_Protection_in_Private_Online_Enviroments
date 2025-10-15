@@ -1,6 +1,8 @@
 import os
 import json
 import datetime
+from pathlib import Path
+from typing import Dict, Optional, Union, Set, Iterable
 
 def log_data_collection(message):
     # Ensure the directory exists
@@ -161,3 +163,42 @@ def image_tally_v2(folder, category):
         print(f"Error writing to image tally file: {e}")
 
     return data[key]
+
+def count_images(root_dir, extensions: Optional[Iterable[str]] = None):
+    """
+    Return the number of image files in `root_dir` and all subfolders.
+    Only files whose suffix is in `extensions` are counted.
+    """
+    root = Path(root_dir)
+    if not root.exists():
+        raise FileNotFoundError(f"No such directory: {root}")
+
+    img_exts = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tif', '.tiff', '.webp', '.jfif', '.heic'}
+
+    # Normalise the extension list; fall back to the img_exts defined above.
+    if extensions is None:
+        ext_set: Set[str] = img_exts
+    else:
+        ext_set = {
+            e if e.startswith(".") else f".{e}"
+            for e in (ext.lower() for ext in extensions)
+        }
+
+    return sum(
+        1
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in ext_set
+    )
+
+
+if __name__ == "__main__":
+    arg_dir = "data/reddit_pics/unsafe"
+    
+    image_tally_v2(arg_dir, "unsafe")
+    arg_dir = "data/reddit_pics/safe"
+
+    image_tally_v2(arg_dir, "safe")
+    arg_dir = "data/reddit_pics/empty"
+
+    image_tally_v2(arg_dir, "empty")
+    # print(f"Found: {count_images(arg_dir)} images") # 4038
