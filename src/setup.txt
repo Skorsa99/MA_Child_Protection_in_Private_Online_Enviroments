@@ -1,0 +1,3 @@
+notes for what i need later
+
+brew install git-lfs

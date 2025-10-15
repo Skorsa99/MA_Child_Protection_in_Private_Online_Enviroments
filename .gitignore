@@ -6,7 +6,3 @@ data/
 
 # Ignore private section of src
 src/private/
-
-# .keras models are to large
-*.keras*.keras
-*.keras
