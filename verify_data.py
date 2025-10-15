@@ -6,7 +6,7 @@ from custom_logging import log_data_filtering, image_tally
 
 app = Flask(__name__)
 MODE = "unsafe"
-SUBREDDIT = "ToplessInPublic"
+SUBREDDIT = "CuteGirlsinPanties"
 IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")  # oder dein Bildpfad
 image_list = sorted([f for f in IMAGE_DIR.iterdir() if f.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 TOTAL_AT_START = len(image_list)
@@ -102,4 +102,5 @@ def previous_image():
 
 if __name__ == "__main__":
     # launch by: 'python verify_data.py'
-    app.run(debug=True)
+    # app.run(debug=True)
+    app.run(host="0.0.0.0", port=9000, debug=False)

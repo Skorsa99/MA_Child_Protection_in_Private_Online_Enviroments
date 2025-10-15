@@ -6,11 +6,15 @@
         <title>Image_Verify</title>
     </head>
     <style>
+        .button {
+            color: black;
+        }
+
         .button:hover {
             box-shadow: 0 0 14px rgba(0,0,0,0.15), 0 0 14px rgba(0,0,0,0.15), 0 0 14px rgba(0,0,0,0.15);
         }
     </style>
-    <body style="padding: 30px; height: 100vh; width: 100vw; box-sizing: border-box; border: none;">
+    <body style="padding: 30px; height: 100vh; width: 100vw; box-sizing: border-box; border: none; background-color: white;">
         <div style="height: 75%;">
             <img src="" alt="image-holder" id="image-holder" style="width: 100%; height: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; border: solid black 5px; box-sizing: border-box; object-fit: contain;">
         </div>
@@ -114,9 +118,11 @@
         };
 
         window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowRight") {
+            // if (e.key === "ArrowRight") {
+            if (e.key === "ArrowDown") {
                 passImage(); // next image
-            } else if (e.key === "ArrowLeft") {
+            // } else if (e.key === "ArrowLeft") {
+            } else if (e.key === "ArrowUp") {
                 goBack(); // previous image
             } else if (e.key.toLowerCase() === "d") {
                 deleteImage(); // delete current

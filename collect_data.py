@@ -391,45 +391,45 @@ if __name__ == "__main__":
         ["BigAsianCock", "unsafe"], # Cleaned
         ["topless", "unsafe"], # Partly Checked (first 1000 images with 0.4% failure rate)
         ["ToplessInPublic", "unsafe"], # Cleaned
-        ["MaleUnderwear", "unsafe"],
-        ["OldGuysRule", "unsafe"],
-        ["GrannyOldWomen", "unsafe"],
-        ["pornstarsinswimwear", "unsafe"],
-        ["swimbrief", "unsafe"],
-        ["Femalenudesonly", "unsafe"],
+        ["MaleUnderwear", "unsafe"], # Cleaned
+        ["OldGuysRule", "unsafe"], # Cleaned (1,04% error rate)
+        ["GrannyOldWomen", "unsafe"], # Cleaned (13,34% error rate)
+        ["pornstarsinswimwear", "unsafe"], # Partly Checked (first 1000 images with 0.0% failure rate)
+        ["swimbrief", "unsafe"], # Cleaned (0,88% error rate)
+        ["Femalenudesonly", "unsafe"], # Cleaned (9,60% error rate)
 
-        ["beach_bodies", "unsafe"],
-        ["NudeMaleArt", "unsafe"],
-        ["FreedomToFlaunt", "unsafe"],
-        ["Shirtless_Men", "unsafe"],
-        ["shirtlessguys", "unsafe"],
-        ["ShirtlessCelebMen", "unsafe"],
-        ["shirtlessinpublic", "unsafe"],
-        ["Brogress", "unsafe"],
-        ["Beardsandboners", "unsafe"],
-        ["gonewild", "unsafe"],
-        ["ladybonersgonemild", "unsafe"],
+        ["beach_bodies", "unsafe"], # Cleaned (0,61% error rate)
+        ["NudeMaleArt", "unsafe"], # Cleaned (6,22% error rate)
+        ["FreedomToFlaunt", "unsafe"], # Cleaned (0,00% error rate)
+        ["Shirtless_Men", "unsafe"], # Cleaned (0,00% error rate)
+        ["shirtlessguys", "unsafe"], # Cleaned (11,76% error rate [only 34 images])
+        ["ShirtlessCelebMen", "unsafe"], # Cleaned (4,51% error rate)
+        ["shirtlessinpublic", "unsafe"], # Cleaned (7,21% error rate)
+        ["Brogress", "unsafe"], # Cleaned (13,02% error rate)
+        ["Beardsandboners", "unsafe"], # Cleaned (4,85% error rate)
+        ["gonewild", "unsafe"], # Cleaned (2,85% error rate)
+        ["ladybonersgonemild", "unsafe"], # Cleaned (37,29% error rate)
 
-        ["SwimmingCostume", "unsafe"],
-        ["BodybuildingCycle", "unsafe"],
-        ["bodybuildingpics", "unsafe"],
-        ["bodybuilding", "unsafe"],
-        ["Dick", "unsafe"],
-        ["dickgirls", "unsafe"], # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
-        ["DicksOnBabes", "unsafe"], # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
-        ["DickSlips", "unsafe"],
-        ["cock", "unsafe"],
-        ["cockheadlovers", "unsafe"],
-        ["cockcompareing", "unsafe"],
-        ["CockOutline", "unsafe"],
-        ["schwanzshow", "unsafe"],
-        ["SchwanzgeileTiroler", "unsafe"],
-        ["bigblackcocks", "unsafe"],
-        ["BlackGirlsCentral", "unsafe"],
+        ["SwimmingCostume", "unsafe"], # Cleaned (0,75% error rate)
+        ["BodybuildingCycle", "unsafe"], # Cleaned (45,59% error rate [only 68 images])
+        ["bodybuildingpics", "unsafe"], # Cleaned (20,17% error rate)
+        ["bodybuilding", "unsafe"], # Cleaned (1,99% error rate)
+        ["Dick", "unsafe"], # Cleaned (1,03% error rate)
+        ["dickgirls", "unsafe"], # Cleaned (4,54% error rate)                                                                            # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
+        ["DicksOnBabes", "unsafe"], # Cleaned (4,46% error rate)                                                                         # Idk just found it and thought why not, maybe coupeling dicks and breasts is not a bad idea, but not sure
+        ["DickSlips", "unsafe"], # Cleaned (4,64% error rate)
+        ["cock", "unsafe"], # Partly Checked (first 1000 images with 0.7% failure rate)
+        ["cockheadlovers", "unsafe"], # Cleaned (1,16% error rate)
+        ["cockcompareing", "unsafe"], # Cleaned (7,24% error rate)
+        ["CockOutline", "unsafe"], # Cleaned (47,97% error rate)
+        ["schwanzshow", "unsafe"], # Cleaned (2,75% error rate)
+        ["SchwanzgeileTiroler", "unsafe"], # Cleaned (8,08% error rate)
+        ["bigblackcocks", "unsafe"], # Cleaned (3,32% error rate)
+        ["BlackGirlsCentral", "unsafe"], # Cleaned (4,65% error rate)
 
-        ["theratio", "unsafe"],
-        ["CuteLittleButts", "unsafe"],
-        ["CuteGirlsinPanties", "unsafe"],
+        ["theratio", "unsafe"], # Cleaned (7,29% error rate)
+        ["CuteLittleButts", "unsafe"], # Cleaned (5,67% error rate)
+        ["CuteGirlsinPanties", "unsafe"], # Partly Checked (first 1000 images with 0.5% failure rate)
 
         # --- safe ---
         ["selfies", "safe"],
