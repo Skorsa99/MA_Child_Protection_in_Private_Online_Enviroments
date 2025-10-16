@@ -11,8 +11,8 @@ from collections import Counter
 from PIL import Image, ImageFile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Backbone: ResNet152V2 with [-1,1] preprocessing (TFJS-friendly)
-from tensorflow.keras.applications.resnet_v2 import ResNet152V2, preprocess_input
+# Backbone: ResNet50V2 with [-1,1] preprocessing (TFJS-friendly)
+from tensorflow.keras.applications.resnet_v2 import ResNet50V2, preprocess_input
 from tensorflow.keras import layers, models, optimizers, losses, callbacks
 import tensorflowjs as tfjs
 
@@ -22,9 +22,9 @@ from custom_logging import log_data_training
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Config --------------------------------------------------------------------------------------------------------------------------
 # -----------------------------------------------------------------------------------------------------------------------------------
-MAIN_VERSION = 2
+MAIN_VERSION = 3
 
-MANIFEST_PATH = "data/manifests/V005_70_20_10_per_source/manifest.jsonl" # Holds the Path to the manifest
+MANIFEST_PATH = "data/manifests/V006_70_20_10_per_source/manifest.jsonl" # Holds the Path to the manifest
 BASE_PATH = "data/reddit_pics" # Holds the Path to the basefolder that contains the image data
 ACCEPTED_EXTS = (".jpeg", ".png", ".bmp")  # ← no .webp
 
@@ -32,7 +32,7 @@ IMG_SIZE         = 224                  # Size of each image (squared)
 IMAGE_NORMALIZER = "resize"             # "resize", "crop", "bars"
 EPOCHS           = 20
 FINETUNE_EPOCHS  = 0                    # Keep this at 0, right now fine tuning seems to cause issues
-BATCH_SIZE       = 265
+BATCH_SIZE       = 64 # 265
 BASE_LR          = 5e-4
 FINE_TUNE_LR     = 1e-5
 DROPOUT          = 0.2
@@ -45,6 +45,9 @@ tf.keras.utils.set_random_seed(SEED)
 AUTOTUNE = tf.data.AUTOTUNE
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 50_000_000  # guard against decompression bombs
+
+ADDITIONAL_METRICS = ("precision", "recall", "roc_auc")
+PRECISION_METRIC, RECALL_METRIC, ROC_AUC_METRIC = ADDITIONAL_METRICS
 
 
 # -----------------------------------------------------------------------------------------------------------------------------------
@@ -193,6 +196,7 @@ def _save_history_artifacts(history, out_dir: str):
             w.writerow([i+1] + list(row))
 
     base_metrics = [k for k in keys if not k.startswith("val_")]
+    generated_plots = {}
     for m in base_metrics:
         plt.figure()
         plt.plot(h[m], label=m)
@@ -203,8 +207,12 @@ def _save_history_artifacts(history, out_dir: str):
         plt.ylabel(m)
         plt.legend()
         plt.tight_layout()
-        plt.savefig(os.path.join(out_dir, f"{m}.png"), dpi=160)
+        plot_path = os.path.join(out_dir, f"{m}.png")
+        plt.savefig(plot_path, dpi=160)
         plt.close()
+        generated_plots[m] = plot_path
+
+    return generated_plots
 
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Mainfunction --------------------------------------------------------------------------------------------------------------------
@@ -268,9 +276,9 @@ def main():
     log_data_training(f"Classes:                {num_classes}")
 
     # ----------------------------------------------------------
-    # Define model (ResNet152V2 backbone)
+    # Define model (ResNet50V2 backbone)
     # ----------------------------------------------------------
-    base_model = ResNet152V2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False, weights="imagenet")
+    base_model = ResNet50V2(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False, weights="imagenet")
     base_model.trainable = False
 
     inputs = tf.keras.Input(shape=(IMG_SIZE, IMG_SIZE, 3), name="input_1")
@@ -283,7 +291,12 @@ def main():
     model.compile(
         optimizer=optimizers.Adam(learning_rate=BASE_LR),
         loss=losses.SparseCategoricalCrossentropy(),
-        metrics=["accuracy"]
+        metrics=[
+            "accuracy",
+            tf.keras.metrics.Precision(name=PRECISION_METRIC),
+            tf.keras.metrics.Recall(name=RECALL_METRIC),
+            tf.keras.metrics.AUC(name=ROC_AUC_METRIC),
+        ]
     )
 
     model.summary()
@@ -303,7 +316,7 @@ def main():
     )
 
     # Save curves and CSV
-    _save_history_artifacts(history, out_dir=version_dir)
+    metric_plot_paths = _save_history_artifacts(history, out_dir=version_dir)
 
     # ----------------------------------------------------------
     # Optional Fine-tuning
@@ -317,7 +330,12 @@ def main():
         model.compile(
             optimizer=optimizers.Adam(learning_rate=FINE_TUNE_LR),
             loss=losses.SparseCategoricalCrossentropy(),
-            metrics=["accuracy"]
+            metrics=[
+                "accuracy",
+                tf.keras.metrics.Precision(name=PRECISION_METRIC),
+                tf.keras.metrics.Recall(name=RECALL_METRIC),
+                tf.keras.metrics.AUC(name=ROC_AUC_METRIC),
+            ]
         )
 
         fine_tune_history = model.fit(
@@ -330,7 +348,8 @@ def main():
             steps_per_epoch=steps_per_epoch,
             validation_steps=val_steps,
         )
-        _save_history_artifacts(fine_tune_history, out_dir=version_dir)
+        fine_tune_plots = _save_history_artifacts(fine_tune_history, out_dir=version_dir)
+        metric_plot_paths.update(fine_tune_plots)
 
     # ----------------------------------------------------------
     # Evaluate Model
@@ -341,6 +360,10 @@ def main():
         test_steps = math.ceil(len(test_pairs) / BATCH_SIZE)
         test_loss, test_acc = model.evaluate(test_ds, steps=test_steps, verbose=1)
         log_data_training(f"TEST — loss: {test_loss:.4f}, acc: {test_acc:.4f}")
+        for metric_name in ADDITIONAL_METRICS:
+            plot_path = metric_plot_paths.get(metric_name, os.path.join(version_dir, f"{metric_name}.png"))
+            if os.path.exists(plot_path):
+                log_data_training(f"{metric_name} plot: {plot_path}")
     else:
         print("No test data found — skipping test evaluation.")
 

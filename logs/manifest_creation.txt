@@ -3,3 +3,4 @@
 2025-08-19 16:22:52 | [OK] Wrote manifests to: data/manifests/V003_80_10_10_per_source
 2025-08-20 19:56:53 | [OK] Wrote manifests to: data/manifests/V004_60_39_01_per_source
 2025-08-22 20:58:27 | [OK] Wrote manifests to: data/manifests/V005_70_20_10_per_source
+2025-10-15 15:57:29 | [OK] Wrote manifests to: data/manifests/V006_70_20_10_per_source

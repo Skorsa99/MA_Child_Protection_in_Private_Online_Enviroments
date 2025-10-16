@@ -3066,3 +3066,22 @@
 2025-09-03 05:34:10 | TEST — loss: 1.7175, acc: 0.6738
 2025-09-03 05:34:13 | Saved labels.json with 3 entries.
 2025-09-03 05:34:13 | Training finished
+2025-10-15 16:17:44 | Started prozess for training Version: V_2_1
+2025-10-15 16:18:03 | Settings:
+2025-10-15 16:18:03 | Image Size:             224
+2025-10-15 16:18:03 | Image Normalization:    resize
+2025-10-15 16:18:03 | Epochs:                 20
+2025-10-15 16:18:03 | Finetune Epochs:        0
+2025-10-15 16:18:03 | Batch Size:             265
+2025-10-15 16:18:03 | Base Learning Rate:     0.0005
+2025-10-15 16:18:03 | Finetune Learning Rate: 1e-05
+2025-10-15 16:18:03 | Dropout:                0.2
+2025-10-15 16:18:03 | Unfreeze From:          -20
+2025-10-15 16:18:03 | Patience:               5
+2025-10-15 16:18:03 | Label Smoothing:        0.0
+2025-10-15 16:18:03 | Seed:                   42
+2025-10-15 16:18:03 | Classes:                3
+2025-10-15 16:18:05 | Starting initial training phase
+2025-10-16 08:45:27 | TEST — loss: 1.9239, acc: 0.6767
+2025-10-16 08:45:30 | Saved labels.json with 3 entries.
+2025-10-16 08:45:30 | Training finished
