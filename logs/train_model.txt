@@ -3085,3 +3085,54 @@
 2025-10-16 08:45:27 | TEST — loss: 1.9239, acc: 0.6767
 2025-10-16 08:45:30 | Saved labels.json with 3 entries.
 2025-10-16 08:45:30 | Training finished
+2025-10-17 13:30:07 | Started prozess for training Version: V_3_0
+2025-10-17 13:30:26 | Settings:
+2025-10-17 13:30:26 | Image Size:             224
+2025-10-17 13:30:26 | Image Normalization:    resize
+2025-10-17 13:30:26 | Epochs:                 20
+2025-10-17 13:30:26 | Finetune Epochs:        0
+2025-10-17 13:30:26 | Batch Size:             64
+2025-10-17 13:30:26 | Base Learning Rate:     0.0005
+2025-10-17 13:30:26 | Finetune Learning Rate: 1e-05
+2025-10-17 13:30:26 | Dropout:                0.2
+2025-10-17 13:30:26 | Unfreeze From:          -20
+2025-10-17 13:30:26 | Patience:               5
+2025-10-17 13:30:26 | Label Smoothing:        0.0
+2025-10-17 13:30:26 | Seed:                   42
+2025-10-17 13:30:26 | Classes:                3
+2025-10-17 13:30:32 | Starting initial training phase
+2025-10-17 15:54:18 | Started prozess for training Version: V_3_1
+2025-10-17 15:54:38 | Settings:
+2025-10-17 15:54:38 | Image Size:             224
+2025-10-17 15:54:38 | Image Normalization:    resize
+2025-10-17 15:54:38 | Epochs:                 20
+2025-10-17 15:54:38 | Finetune Epochs:        0
+2025-10-17 15:54:38 | Batch Size:             64
+2025-10-17 15:54:38 | Base Learning Rate:     0.0005
+2025-10-17 15:54:38 | Finetune Learning Rate: 1e-05
+2025-10-17 15:54:38 | Dropout:                0.2
+2025-10-17 15:54:38 | Unfreeze From:          -20
+2025-10-17 15:54:38 | Patience:               5
+2025-10-17 15:54:38 | Label Smoothing:        0.0
+2025-10-17 15:54:38 | Seed:                   42
+2025-10-17 15:54:38 | Classes:                3
+2025-10-17 15:54:38 | Starting initial training phase
+2025-10-18 01:50:00 | Started prozess for training Version: V_3_2
+2025-10-18 01:50:19 | Settings:
+2025-10-18 01:50:19 | Image Size:             224
+2025-10-18 01:50:19 | Image Normalization:    resize
+2025-10-18 01:50:19 | Epochs:                 20
+2025-10-18 01:50:19 | Finetune Epochs:        0
+2025-10-18 01:50:19 | Batch Size:             64
+2025-10-18 01:50:19 | Base Learning Rate:     0.0005
+2025-10-18 01:50:19 | Finetune Learning Rate: 1e-05
+2025-10-18 01:50:19 | Dropout:                0.2
+2025-10-18 01:50:19 | Unfreeze From:          -20
+2025-10-18 01:50:19 | Patience:               5
+2025-10-18 01:50:19 | Label Smoothing:        0.0
+2025-10-18 01:50:19 | Seed:                   42
+2025-10-18 01:50:19 | Classes:                3
+2025-10-18 01:50:20 | Starting initial training phase
+2025-10-18 07:12:58 | TEST — loss: 2.6406, acc: 0.4921
+2025-10-18 07:12:59 | Saved labels.json with 3 entries.
+2025-10-18 07:12:59 | Training finished

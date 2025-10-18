@@ -46,9 +46,6 @@ AUTOTUNE = tf.data.AUTOTUNE
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = 50_000_000  # guard against decompression bombs
 
-ADDITIONAL_METRICS = ("precision", "recall", "roc_auc")
-PRECISION_METRIC, RECALL_METRIC, ROC_AUC_METRIC = ADDITIONAL_METRICS
-
 
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Helperfunctions -----------------------------------------------------------------------------------------------------------------
@@ -182,7 +179,12 @@ def _labels_from_manifest(manifest):
 
 def _save_history_artifacts(history, out_dir: str):
     _ensure_dir(out_dir)
-    h = history.history  # dict: metric -> list per epoch
+    # h = history.history  # dict: metric -> list per epoch
+    h = {
+        k: [float(x) for x in v]
+        for k, v in history.history.items()
+    }
+
 
     with open(os.path.join(out_dir, "history.json"), "w") as f:
         json.dump(h, f, indent=2)
@@ -196,7 +198,6 @@ def _save_history_artifacts(history, out_dir: str):
             w.writerow([i+1] + list(row))
 
     base_metrics = [k for k in keys if not k.startswith("val_")]
-    generated_plots = {}
     for m in base_metrics:
         plt.figure()
         plt.plot(h[m], label=m)
@@ -207,12 +208,8 @@ def _save_history_artifacts(history, out_dir: str):
         plt.ylabel(m)
         plt.legend()
         plt.tight_layout()
-        plot_path = os.path.join(out_dir, f"{m}.png")
-        plt.savefig(plot_path, dpi=160)
+        plt.savefig(os.path.join(out_dir, f"{m}.png"), dpi=160)
         plt.close()
-        generated_plots[m] = plot_path
-
-    return generated_plots
 
 # -----------------------------------------------------------------------------------------------------------------------------------
 # - Mainfunction --------------------------------------------------------------------------------------------------------------------
@@ -292,16 +289,20 @@ def main():
         optimizer=optimizers.Adam(learning_rate=BASE_LR),
         loss=losses.SparseCategoricalCrossentropy(),
         metrics=[
-            "accuracy",
-            tf.keras.metrics.Precision(name=PRECISION_METRIC),
-            tf.keras.metrics.Recall(name=RECALL_METRIC),
-            tf.keras.metrics.AUC(name=ROC_AUC_METRIC),
+            "accuracy"
         ]
     )
 
     model.summary()
 
     early_stop = callbacks.EarlyStopping(patience=PATIENCE, restore_best_weights=True)
+    reduce_lr = callbacks.ReduceLROnPlateau(
+        monitor="val_loss",
+        factor=0.5,
+        patience=PATIENCE,
+        verbose=1,
+        min_lr=1e-6, # Ask if min means that this is the largest vlaue, basically the minimum step, or the smallest basically the floor
+    )
 
     log_data_training("Starting initial training phase")
 
@@ -310,13 +311,13 @@ def main():
         epochs=EPOCHS,
         validation_data=val_ds,
         class_weight=class_weights,
-        callbacks=[early_stop],
+        callbacks=[early_stop, reduce_lr],
         steps_per_epoch=steps_per_epoch,
         validation_steps=val_steps,
     )
 
     # Save curves and CSV
-    metric_plot_paths = _save_history_artifacts(history, out_dir=version_dir)
+    _save_history_artifacts(history, out_dir=version_dir)
 
     # ----------------------------------------------------------
     # Optional Fine-tuning
@@ -331,11 +332,16 @@ def main():
             optimizer=optimizers.Adam(learning_rate=FINE_TUNE_LR),
             loss=losses.SparseCategoricalCrossentropy(),
             metrics=[
-                "accuracy",
-                tf.keras.metrics.Precision(name=PRECISION_METRIC),
-                tf.keras.metrics.Recall(name=RECALL_METRIC),
-                tf.keras.metrics.AUC(name=ROC_AUC_METRIC),
+                "accuracy"
             ]
+        )
+
+        fine_tune_reduce_lr = callbacks.ReduceLROnPlateau(
+            monitor="val_loss",
+            factor=0.5,
+            patience=PATIENCE,
+            verbose=1,
+            min_lr=1e-6, # Ask if min means that this is the largest vlaue, basically the minimum step, or the smallest basically the floor
         )
 
         fine_tune_history = model.fit(
@@ -344,12 +350,11 @@ def main():
             initial_epoch=history.epoch[-1] + 1,
             validation_data=val_ds,
             class_weight=class_weights,
-            callbacks=[early_stop],
+            callbacks=[early_stop, fine_tune_reduce_lr],
             steps_per_epoch=steps_per_epoch,
             validation_steps=val_steps,
         )
-        fine_tune_plots = _save_history_artifacts(fine_tune_history, out_dir=version_dir)
-        metric_plot_paths.update(fine_tune_plots)
+        _save_history_artifacts(fine_tune_history, out_dir=version_dir)
 
     # ----------------------------------------------------------
     # Evaluate Model
@@ -360,10 +365,6 @@ def main():
         test_steps = math.ceil(len(test_pairs) / BATCH_SIZE)
         test_loss, test_acc = model.evaluate(test_ds, steps=test_steps, verbose=1)
         log_data_training(f"TEST — loss: {test_loss:.4f}, acc: {test_acc:.4f}")
-        for metric_name in ADDITIONAL_METRICS:
-            plot_path = metric_plot_paths.get(metric_name, os.path.join(version_dir, f"{metric_name}.png"))
-            if os.path.exists(plot_path):
-                log_data_training(f"{metric_name} plot: {plot_path}")
     else:
         print("No test data found — skipping test evaluation.")
 
