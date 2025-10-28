@@ -38,7 +38,7 @@ FINE_TUNE_LR     = 1e-5
 DROPOUT          = 0.2
 UNFREEZE_FROM    = -20                  # last N layers of the base model
 PATIENCE         = 5                    # early stopping
-LABEL_SMOOTHING  = 0.0                  # e.g. 0.05 if you want it
+LABEL_SMOOTHING  = 0.05                  # e.g. 0.05 if you want it
 SEED             = 42                   # Seed for reproducability
 tf.keras.utils.set_random_seed(SEED)
 
@@ -105,7 +105,10 @@ def _filter_invalid_pairs(pairs, max_workers=8):
         print(f"Filtered out {removed} unreadable images (kept {len(valid)})")
     return valid
 
-# --- TF preprocess -----------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+# Augmentation configuration (old) --------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+"""
 def _preprocess_tf(path, label_id, training=False, img_size=IMG_SIZE, normalizer=IMAGE_NORMALIZER):
     img_bytes = tf.io.read_file(path)
     img = tf.io.decode_image(img_bytes, channels=3, expand_animations=False)
@@ -153,6 +156,204 @@ def _make_dataset(pairs, training=False):
 
     ds = ds.batch(BATCH_SIZE).prefetch(tf.data.AUTOTUNE)
     return ds
+"""
+# -----------------------------------------------------------------------------------------------------------------------------------
+# Augmentation configuration (new) --------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------
+AUG_RESIZE_DELTA = 32          # extra pixels before random crop
+AUG_SCALE_RANGE = (1.0, 1.35)  # random zoom-in factors
+COLOR_JITTER = dict(brightness=0.18, contrast=0.18, saturation=0.25, hue=0.05)
+MIXUP_ALPHA = 0.25
+CUTMIX_ALPHA = 1.0
+CUTMIX_PROB = 0.5
+USE_SOFT_LABELS = False          # False keeps sparse labels for SparseCategoricalCrossentropy
+
+def _preprocess_tf(path, label_id, training=False, img_size=IMG_SIZE, normalizer=IMAGE_NORMALIZER):
+    img_bytes = tf.io.read_file(path)
+    img = tf.io.decode_image(img_bytes, channels=3, expand_animations=False)
+    img = tf.image.convert_image_dtype(img, tf.float32)  # [0, 1]
+
+    target = img_size + AUG_RESIZE_DELTA
+    if normalizer == "bars":
+        img = tf.image.resize_with_pad(img, target, target, method="bilinear")
+    elif normalizer == "crop":
+        h = tf.shape(img)[0]; w = tf.shape(img)[1]
+        scale = tf.cast(target, tf.float32) / tf.cast(tf.minimum(h, w), tf.float32)
+        new_h = tf.cast(tf.round(tf.cast(h, tf.float32) * scale), tf.int32)
+        new_w = tf.cast(tf.round(tf.cast(w, tf.float32) * scale), tf.int32)
+        img = tf.image.resize(img, (new_h, new_w), method="bilinear")
+    elif normalizer == "resize":
+        img = tf.image.resize(img, (target, target), method="bilinear")
+    else:
+        raise ValueError(f"Unknown IMAGE_NORMALIZER: {normalizer}")
+
+    if training:
+        crop_size = tf.cast(
+            tf.round(tf.random.uniform([], AUG_SCALE_RANGE[0], AUG_SCALE_RANGE[1]) * tf.cast(img_size, tf.float32)),
+            tf.int32,
+        )
+        crop_size = tf.clip_by_value(crop_size, img_size, target)
+        img = tf.image.random_crop(img, size=[crop_size, crop_size, 3])
+        img = tf.image.resize(img, (img_size, img_size), method="bilinear")
+        img = tf.image.random_flip_left_right(img)
+        img = tf.image.random_brightness(img, max_delta=COLOR_JITTER["brightness"])
+        img = tf.image.random_contrast(
+            img,
+            lower=1.0 - COLOR_JITTER["contrast"],
+            upper=1.0 + COLOR_JITTER["contrast"],
+        )
+        img = tf.image.random_saturation(
+            img,
+            lower=1.0 - COLOR_JITTER["saturation"],
+            upper=1.0 + COLOR_JITTER["saturation"],
+        )
+        img = tf.image.random_hue(img, max_delta=COLOR_JITTER["hue"])
+        img = tf.clip_by_value(img, 0.0, 1.0)
+    else:
+        img = tf.image.resize_with_crop_or_pad(img, img_size, img_size)
+
+    img = preprocess_input(img * 255.0)  # ResNetV2 expects [-1, 1]
+    img.set_shape([img_size, img_size, 3])
+    return img, tf.cast(label_id, tf.int32)
+
+
+def _sample_beta_distribution(size, concentration):
+    gamma_1 = tf.random.gamma(shape=[size], alpha=concentration, dtype=tf.float32)
+    gamma_2 = tf.random.gamma(shape=[size], alpha=concentration, dtype=tf.float32)
+    return gamma_1 / (gamma_1 + gamma_2)
+
+
+def _mixup_batch(images, labels, alpha):
+    batch = tf.shape(images)[0]
+
+    def _apply():
+        weights = _sample_beta_distribution(batch, alpha)
+        x_w = tf.reshape(weights, [batch, 1, 1, 1])
+        y_w = tf.reshape(weights, [batch, 1])
+        shuffle = tf.random.shuffle(tf.range(batch))
+        mixed_images = images * x_w + tf.gather(images, shuffle) * (1.0 - x_w)
+        mixed_labels = labels * y_w + tf.gather(labels, shuffle) * (1.0 - y_w)
+        return mixed_images, mixed_labels
+
+    return tf.cond(batch > 1, _apply, lambda: (images, labels))
+
+
+def _cutmix_batch(images, labels, alpha):
+    batch = tf.shape(images)[0]
+
+    def _apply():
+        weights = _sample_beta_distribution(batch, alpha)
+        shuffle = tf.random.shuffle(tf.range(batch))
+        shuffled_images = tf.gather(images, shuffle)
+        shuffled_labels = tf.gather(labels, shuffle)
+
+        h = tf.shape(images)[1]
+        w = tf.shape(images)[2]
+        cut_ratios = tf.sqrt(1.0 - weights)
+        cut_heights = tf.maximum(tf.cast(cut_ratios * tf.cast(h, tf.float32), tf.int32), 1)
+        cut_widths = tf.maximum(tf.cast(cut_ratios * tf.cast(w, tf.float32), tf.int32), 1)
+        ys = tf.random.uniform([batch], 0, h, dtype=tf.int32)
+        xs = tf.random.uniform([batch], 0, w, dtype=tf.int32)
+
+        def _cutmix_single_index(idx):
+            idx = tf.cast(idx, tf.int32)
+            image = images[idx]
+            label = labels[idx]
+            s_image = shuffled_images[idx]
+            s_label = shuffled_labels[idx]
+            ch = cut_heights[idx]
+            cw = cut_widths[idx]
+            cy = ys[idx]
+            cx = xs[idx]
+
+            image_h = tf.shape(image)[0]
+            image_w = tf.shape(image)[1]
+
+            y1 = tf.clip_by_value(cy - ch // 2, 0, image_h)
+            y2 = tf.clip_by_value(y1 + ch, 0, image_h)
+            x1 = tf.clip_by_value(cx - cw // 2, 0, image_w)
+            x2 = tf.clip_by_value(x1 + cw, 0, image_w)
+
+            mask = tf.pad(
+                tf.zeros((y2 - y1, x2 - x1, 3), dtype=tf.float32),
+                [[y1, image_h - y2], [x1, image_w - x2], [0, 0]],
+                constant_values=1.0,
+            )
+            mixed_image = image * mask + s_image * (1.0 - mask)
+
+            mix_ratio = tf.cast((y2 - y1) * (x2 - x1), tf.float32) / tf.cast(image_h * image_w, tf.float32)
+            mixed_label = (1.0 - mix_ratio) * label + mix_ratio * s_label
+            mixed_image.set_shape([IMG_SIZE, IMG_SIZE, 3])
+            if label.shape.rank == 1 and label.shape[0] is not None:
+                mixed_label.set_shape(label.shape)
+            return mixed_image, mixed_label
+
+        label_depth = labels.shape[-1]
+        label_spec_dim = int(label_depth) if label_depth is not None else None
+
+        mixed_images, mixed_labels = tf.map_fn(
+            _cutmix_single_index,
+            elems=tf.range(batch),
+            fn_output_signature=(
+                tf.TensorSpec(shape=(IMG_SIZE, IMG_SIZE, 3), dtype=tf.float32),
+                tf.TensorSpec(shape=(label_spec_dim,), dtype=tf.float32),
+            ),
+        )
+        return mixed_images, mixed_labels
+
+    return tf.cond(batch > 1, _apply, lambda: (images, labels))
+
+
+def _mixup_cutmix_batch(images, labels):
+    return tf.cond(
+        tf.less(tf.random.uniform([], 0, 1.0), CUTMIX_PROB),
+        lambda: _cutmix_batch(images, labels, CUTMIX_ALPHA),
+        lambda: _mixup_batch(images, labels, MIXUP_ALPHA),
+    )
+
+
+def _make_dataset(pairs, training=False, num_classes=None):
+    if not pairs:
+        empty_images = tf.zeros([0, IMG_SIZE, IMG_SIZE, 3], tf.float32)
+        if USE_SOFT_LABELS:
+            if num_classes is None or num_classes == 0:
+                return tf.data.Dataset.from_tensor_slices(([], [])).batch(BATCH_SIZE)
+            empty_labels = tf.zeros([0, num_classes], tf.float32)
+        else:
+            empty_labels = tf.zeros([0], tf.int32)
+        return tf.data.Dataset.from_tensor_slices((empty_images, empty_labels)).batch(BATCH_SIZE)
+
+    if USE_SOFT_LABELS and num_classes is None:
+        num_classes = _num_classes_from_pairs(pairs)
+
+    paths, labels = zip(*pairs)
+    ds = tf.data.Dataset.from_tensor_slices((list(paths), list(labels)))
+
+    if training:
+        ds = ds.shuffle(buffer_size=min(len(pairs), 4096))
+
+    num_calls = min(8, (os.cpu_count() or 8))
+
+    def _map_fn(path, label):
+        image, label = _preprocess_tf(path, label, training)
+        if USE_SOFT_LABELS:
+            label = tf.one_hot(label, num_classes)
+        else:
+            label = tf.cast(label, tf.int32)
+        return image, label
+
+    ds = ds.map(_map_fn, num_parallel_calls=num_calls)
+
+    opts = tf.data.Options()
+    opts.experimental_deterministic = False
+    ds = ds.with_options(opts)
+
+    ds = ds.batch(BATCH_SIZE, drop_remainder=False)
+    if training and USE_SOFT_LABELS:
+        ds = ds.map(_mixup_cutmix_batch, num_parallel_calls=tf.data.AUTOTUNE)
+
+    return ds.prefetch(tf.data.AUTOTUNE)
+
 
 def _num_classes_from_pairs(pairs):
     return int(max(l for _, l in pairs)) + 1 if pairs else 0
@@ -287,8 +488,10 @@ def main():
     model = tf.keras.Model(inputs=inputs, outputs=outputs)
     model.compile(
         optimizer=optimizers.Adam(learning_rate=BASE_LR),
-        loss=losses.SparseCategoricalCrossentropy(),
+        # loss=losses.CategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
+        loss = losses.SparseCategoricalCrossentropy(),
         metrics=[
+            # "categorical_accuracy"
             "accuracy"
         ]
     )
@@ -330,8 +533,10 @@ def main():
 
         model.compile(
             optimizer=optimizers.Adam(learning_rate=FINE_TUNE_LR),
-            loss=losses.SparseCategoricalCrossentropy(),
+            # loss=losses.CategoricalCrossentropy(label_smoothing=LABEL_SMOOTHING),
+            loss = losses.SparseCategoricalCrossentropy(),
             metrics=[
+                # "categorical_accuracy"
                 "accuracy"
             ]
         )
