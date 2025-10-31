@@ -8,6 +8,7 @@ const processed_holder = document.getElementById('processed-video-holder');
 const canvas = document.getElementById('canvas');
 const result_display = document.getElementById('result-text');
 const result_display_holder = document.getElementById('result-holder');
+const IMG_SIZE = 256
 
 let videoStreamRunning = false;
 
@@ -42,8 +43,8 @@ async function startVideoProcessing() {
     const drawFrame = () => {
         if (!videoStreamRunning) return;
 
-        // Draw current video frame into canvas (resized to 224x224)
-        ctx.drawImage(videoEl, 0, 0, 224, 224);
+        // Draw current video frame into canvas (resized to IMG_SIZExIMG_SIZE)
+        ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
 
         // You could also classify here if needed
         // const imgTensor = preprocessImage(canvas);
@@ -69,8 +70,8 @@ let model;
 let labels;
 
 async function loadModelAndLabels() {
-    model = await tf.loadLayersModel('../../models/V_2_0/model_tfjs/model.json');
-    const labelsRes = await fetch('../../models/V_2_0/model_tfjs/labels.json');
+    model = await tf.loadLayersModel('../../models/V_4_2/model_tfjs/model.json');
+    const labelsRes = await fetch('../../models/V_4_2/model_tfjs/labels.json');
     labels = await labelsRes.json();
     console.log("Model and labels loaded.");
 }
@@ -79,16 +80,15 @@ function preprocessImage(imgElement) {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    // Draw and resize to 224x224
-    ctx.drawImage(imgElement, 0, 0, 224, 224);
+    // Draw and resize to IMG_SIZExIMG_SIZE
+    ctx.drawImage(imgElement, 0, 0, IMG_SIZE, IMG_SIZE);
 
-    const imageData = ctx.getImageData(0, 0, 224, 224);
+    const imageData = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE);
     let imgTensor = tf.browser.fromPixels(imageData)
         .toFloat()
-        .div(127.5)
-        .sub(1.0) // match [-1, 1] expected by MobileNetV3
+        .div(255.0); // match [0, 1] normalization used during training
 
-    return imgTensor.expandDims(0); // shape: [1, 224, 224, 3]
+    return imgTensor.expandDims(0); // shape: [1, IMG_SIZE, IMG_SIZE, 3]
 }
 
 async function classifyImage(file) {
@@ -198,11 +198,11 @@ async function classifyFromCameraLoop() {
 }
 
 function preprocessFromVideo(videoEl) {
-    // Preprocessing for 224×224, need to be the same as training
+    // Preprocessing for IMG_SIZE×IMG_SIZE, need to be the same as training
     const t = tf.browser.fromPixels(videoEl);                   // [H,W,3], RGB
-    const r = tf.image.resizeBilinear(t, [224, 224]);           // alignCorners=false by default (matches TF default)
-    const x = r.toFloat().div(127.5).sub(1.0);                  // MobileNetV2: [-1, 1]
-    const input = x.expandDims(0);                              // [1,224,224,3]
+    const r = tf.image.resizeBilinear(t, [IMG_SIZE, IMG_SIZE]);           // alignCorners=false by default (matches TF default)
+    const x = r.toFloat().div(255.0);                           // match [0, 1] normalization used during training
+    const input = x.expandDims(0);                              // [1,IMG_SIZE,IMG_SIZE,3]
     return input;
 }
 
@@ -210,7 +210,7 @@ async function classifyFromCameraLoop_V2() {
     if (!model || !labels) await loadModelAndLabels();
 
     const ctx = canvas.getContext('2d');
-    const targetMs = 1000 / 1000; // ~1000 FPS inference if we want to limit fps
+    const targetMs = 1000 / 1000; // ~1000 FPS inference limit if we want to limit fps
     let lastInfer = 0;
     let firstLogDone = false;
 
@@ -218,14 +218,21 @@ async function classifyFromCameraLoop_V2() {
         if (!videoStreamRunning) return;
 
         // 1) Visualize exactly what the model sees
-        ctx.drawImage(videoEl, 0, 0, 224, 224);
+        ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
 
         // 2) Classify straight from the video element (not the canvas)
         if (videoEl.readyState >= 2 && (ts - lastInfer) >= targetMs) {
             const probs = await tf.tidy(() => {
+                /*
                 const input = preprocessFromVideo(videoEl);
                 const pred = model.predict(input);        // softmax from Keras layers model
                 return pred.dataSync();            // ✅ TypedArray, no Promise
+                Switch between the two blocks to deactivate inference */
+                const fake = new Float32Array(labels.length);
+                fake.fill(0 / labels.length);        // equal odds for every class // currently set everything to 0
+                // fake[1] = 0.9;                    // optional: bias one class to mimic a “real” result
+                // console.log("This is without inference")
+                return fake;
             });
 
             const topIdx = probs.indexOf(Math.max(...probs));
