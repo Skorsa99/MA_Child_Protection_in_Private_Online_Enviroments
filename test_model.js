@@ -10,6 +10,8 @@ const result_display = document.getElementById('result-text');
 const result_display_holder = document.getElementById('result-holder');
 const IMG_SIZE = 256
 
+tf.ready().then(() => console.log('TF backend:', tf.getBackend()));
+
 let videoStreamRunning = false;
 
 camToggle.addEventListener('change', async (event) => {
@@ -223,16 +225,16 @@ async function classifyFromCameraLoop_V2() {
         // 2) Classify straight from the video element (not the canvas)
         if (videoEl.readyState >= 2 && (ts - lastInfer) >= targetMs) {
             const probs = await tf.tidy(() => {
-                /*
                 const input = preprocessFromVideo(videoEl);
                 const pred = model.predict(input);        // softmax from Keras layers model
                 return pred.dataSync();            // ✅ TypedArray, no Promise
-                Switch between the two blocks to deactivate inference */
+                /* Switch between the two blocks to deactivate inference
                 const fake = new Float32Array(labels.length);
                 fake.fill(0 / labels.length);        // equal odds for every class // currently set everything to 0
                 // fake[1] = 0.9;                    // optional: bias one class to mimic a “real” result
                 // console.log("This is without inference")
                 return fake;
+                */
             });
 
             const topIdx = probs.indexOf(Math.max(...probs));
