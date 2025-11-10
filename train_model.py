@@ -47,7 +47,7 @@ print(f"Auto-selected version: {version}")
 
 
 # data_dir = "../Master/ARiES/Project/SZ - NSFW Detections/Project 2 - Practical Part/MA_Child_Protection_in_Private_Online_Enviroments/data/reddit_pics"
-data_dir = "data/working_data"
+data_dir = "data/reddit_pics" # "data/working_data"
 out_dir = f"models/{version}"
 out_dir = pathlib.Path(out_dir)
 out_dir.mkdir(exist_ok=True)

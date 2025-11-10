@@ -67,7 +67,9 @@ urllib3==2.5.0 \
 Werkzeug==3.1.3 \
 wrapt==2.0.0 \
 zipp==3.23.0 \
-tensorflowjs==4.22.0
+tensorflowjs==4.22.0 \
+opencv-python==4.12.0.88 \
+dotenv==0.9.9
 
 echo ">>> Environment setup complete ✅"
 python -V
