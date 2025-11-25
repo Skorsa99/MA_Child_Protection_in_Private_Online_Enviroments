@@ -457,6 +457,8 @@ if __name__ == "__main__":
         ["portraits", "safe"],
         ["whitetanktops", "safe"],
 
+        ["SelfieOver25", "safe"],
+
         # ["cute_face", "safe"], # Likely banned
 
         # --- empty ---
@@ -470,30 +472,32 @@ if __name__ == "__main__":
 
     safe_only_subreddits = [
         # --- safe ---
-        ["selfies", "safe"],
-        ["outfitoftheday", "safe"],
-        ["malehairadvice", "safe"],
-        ["selfie", "safe"],
-        ["Outfits", "safe"],
-        ["TodayIWore", "safe"],
-        ["MakeupAddiction", "safe"],
-        ["malefashion", "safe"],
-        ["malegrooming", "safe"],
-        ["beards", "safe"],
-        ["FreeCompliments", "safe"],
-        ["over60selfies", "safe"],
-        ["50something", "safe"],
-        ["40something", "safe"],
-        ["blackladies", "safe"],
-        ["FreeAIHeadshots", "safe"],
-        ["headshots", "safe"],
-        ["medicalillustration", "safe"],
-        ["anatomicalart", "safe"],
-        ["Homescreens", "safe"],
+        ["selfies", "safe"], # Good
+        ["outfitoftheday", "safe"], # Good
+        ["malehairadvice", "safe"], # Bad-ish
+        ["selfie", "safe"], # Good
+        ["Outfits", "safe"], # Good
+        ["TodayIWore", "safe"], # Good
+        ["MakeupAddiction", "safe"], # Bad
+        ["malefashion", "safe"], # Good
+        ["malegrooming", "safe"], # Good-ish
+        ["beards", "safe"], # Good
+        ["FreeCompliments", "safe"], # Good
+        ["over60selfies", "safe"], # Good
+        ["50something", "safe"], # Good-ish
+        ["40something", "safe"], # Good
+        ["blackladies", "safe"], # Bad-ish
+        ["FreeAIHeadshots", "safe"], # Good
+        ["headshots", "safe"], # Good
+        ["medicalillustration", "safe"], # Different
+        ["anatomicalart", "safe"], # Different
+        ["Homescreens", "safe"], # Different
         
-        ["UI_Design", "safe"],
-        ["portraits", "safe"],
-        ["whitetanktops", "safe"],
+        ["UI_Design", "safe"], # Different
+        ["portraits", "safe"], # Good-ish 
+        ["whitetanktops", "safe"], # Mid
+
+        ["SelfieOver25", "safe"], # Good
 
         # ["cute_face", "safe"], # Likely banned
 

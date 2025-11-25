@@ -5,9 +5,9 @@ from pathlib import Path
 from custom_logging import log_data_filtering, image_tally
 
 app = Flask(__name__)
-MODE = "unsafe"
-SUBREDDIT = "CuteGirlsinPanties"
-IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")  # oder dein Bildpfad
+MODE = "safe"
+SUBREDDIT = "SelfieOver25"
+IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")
 image_list = sorted([f for f in IMAGE_DIR.iterdir() if f.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 TOTAL_AT_START = len(image_list)
 current_index = 0
