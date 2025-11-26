@@ -161,6 +161,8 @@ def count_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
                 # Skip unreadable/problematic files but continue processing
                 print(f"Skipping {p}: {e}")
 
+        print(f"Completed: {dirpath}")
+
     end_message = f"Counted {would_be_removed} pixel-identical duplicate image(s) in '{root.resolve()}'."
     print(end_message)
     return would_be_removed
@@ -168,5 +170,5 @@ def count_duplicates(root_dir: Optional[Union[str, Path]] = None) -> int:
 
 if __name__ == "__main__":
     arg_dir = "data/reddit_pics"
-    # remove_duplicates(arg_dir)
-    count_duplicates(arg_dir)
+    remove_duplicates(arg_dir)
+    # count_duplicates(arg_dir)
