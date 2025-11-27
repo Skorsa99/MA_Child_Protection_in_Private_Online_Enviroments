@@ -31,7 +31,7 @@ MODEL_FILE: Path | None = None              # Optional explicit path to a .keras
 LABELS_PATH: Path | None = None             # Optional explicit labels.json path
 IMAGE_SIZE: int = 256                       # Resize images to IMAGE_SIZE x IMAGE_SIZE
 BATCH_SIZE: int = 32                        # Number of images per prediction batch
-MAX_IMAGES_PER_CLASS: int = 5000 # None     # Limit images evaluated per class (None = all)
+MAX_IMAGES_PER_CLASS: int = None            # Limit images evaluated per class (None = all)
 # --------------------------------------------------------------------------------------
 
 IMAGE_EXTS = {
