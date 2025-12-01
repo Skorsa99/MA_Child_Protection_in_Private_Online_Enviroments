@@ -190,6 +190,40 @@ def count_images(root_dir, extensions: Optional[Iterable[str]] = None):
         if path.is_file() and path.suffix.lower() in ext_set
     )
 
+def ensure_txt_and_append_line(file_path: Union[str, Path], line: str) -> bool:
+    """
+    Ensure a .txt file exists and append a single line to it.
+
+    Returns True on success, False otherwise.
+    """
+    try:
+        path = Path(file_path)
+        if path.suffix.lower() != ".txt":
+            path = path.with_suffix(".txt")
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(f"{line}\n")
+        return True
+    except Exception:
+        return False
+
+def log_extensive_testing(file_path, message):
+    # Ensure the directory exists
+    file_path = f"{file_path}/log.txt"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    # Get a date-time string and format the log message
+    date_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    full_message = f"{date_time_str} | {message}\n"
+
+    # Open the log file in append mode and write the message
+    try:
+        with open(file_path, 'a') as log_file:
+            log_file.write(full_message)
+    except Exception as e:
+        return
+    
 
 if __name__ == "__main__":
     arg_dir = "data/reddit_pics/unsafe"

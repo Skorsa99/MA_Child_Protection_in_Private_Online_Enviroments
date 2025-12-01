@@ -10,7 +10,7 @@ import tensorflowjs as tfjs
 import tensorflow as tf, inspect
 from matplotlib import pyplot as plt
 from tensorflow.keras import regularizers, layers
-from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras.callbacks import ReduceLROnPlateau, ModelCheckpoint, EarlyStopping
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropout
 from tensorflow.keras.metrics import Precision, Recall, BinaryAccuracy, SparseCategoricalAccuracy
@@ -58,14 +58,15 @@ log_data_training(f"Started prozess for training Version: {version}")
 
 
 # - Config ------------
-EPOCHS        = 20
+EPOCHS        = 100 # 3 # 20
 BATCH_SIZE    = 64 # 32
-LR            = 1e-5 # little small but lets give it a go
-MIN_LR        = 5e-8
+LR            = 5e-5 # 1e-5 # little small but lets give it a go
+MIN_LR        = 5e-9 # 5e-8
 PATIENCE      = 2
 REDUCE_FACTOR = 0.3
 L2            = regularizers.l2(1e-4) # weight-decay strength
 IMG_SIZE      = 256
+E_S_PATIENCE  = 5
 # ---------------------
 
 
@@ -357,6 +358,21 @@ print("----------------------------------")
 # --------------------------------------------------------------------------------------------------
 log_dir_variable = f"logs/tensorboard_callback_logs/{version}"
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir_variable)
+best_model_path = out_dir / "best_model.keras"
+checkpoint_cb = ModelCheckpoint(
+    filepath=str(best_model_path),
+    monitor="val_loss",
+    mode="min",
+    save_best_only=True,
+    save_weights_only=False,
+    verbose=1
+)
+early_stop = EarlyStopping(
+    monitor="val_loss",
+    patience=E_S_PATIENCE,
+    restore_best_weights=True,
+    verbose=1
+)
 
 # history = model.fit(train, epochs=EPOCHS, validation_data=val, callbacks=[tensorboard_callback])
 
@@ -372,8 +388,15 @@ history = model.fit(
     train,
     epochs=EPOCHS,
     validation_data=val,
-    callbacks=[tensorboard_callback, plateau])
+    callbacks=[tensorboard_callback, plateau, checkpoint_cb, early_stop])
 # ---------------------
+
+# Load best checkpoint (by val_loss) before evaluation/export
+if best_model_path.exists():
+    model = load_model(best_model_path)
+    log_data_training(f"Loaded best model from {best_model_path}")
+else:
+    log_data_training("Best model checkpoint not found; using last epoch weights")
 
 
 # --------------------------------------------------------------------------------------------------
