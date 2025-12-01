@@ -14,6 +14,7 @@ import os
 import re
 import json
 from pathlib import Path
+from datetime import datetime
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 # Match the training setup so legacy-keras models load cleanly
@@ -32,12 +33,12 @@ from custom_logging import log_extensive_testing
 # Settings
 # --------------------------------------------------------------------------------------
 DATA_DIR: Path = Path("data/reddit_pics")   # Root folder that contains one subfolder per class
-MODEL_DIR: Path = Path("models/V_4_2")      # Folder containing the saved model + labels.json
+MODEL_DIR: Path = Path("models/V_4_6")      # Folder containing the saved model + labels.json
 MODEL_FILE: Path | None = None              # Optional explicit path to a .keras or .h5 file
 LABELS_PATH: Path | None = None             # Optional explicit labels.json path
 IMAGE_SIZE: int = 256                       # Resize images to IMAGE_SIZE x IMAGE_SIZE
 BATCH_SIZE: int = 32                        # Number of images per prediction batch
-MAX_IMAGES_PER_CLASS: int = None            # Limit images evaluated per class (None = all)
+MAX_IMAGES_PER_CLASS: int = 500#None            # Limit images evaluated per class (None = all)
 # --------------------------------------------------------------------------------------
 
 IMAGE_EXTS = {
@@ -65,7 +66,7 @@ def _get_ourdir(logs_dir="logs/model_testing_logs") -> str:
             subversions.append(int(match.group(1)))
 
     next_sub = max(subversions) + 1 if subversions else 0
-    return f"{logs_dir}/test_{next_sub}"
+    return f"{logs_dir}/testrun_{next_sub}"
 
 def load_labels(labels_path: Path) -> List[str]:
     if not labels_path.is_file():
@@ -127,7 +128,7 @@ def evaluate_class(
     image_size: int,
     batch_size: int,
     max_images: int | None,
-) -> Tuple[int, int, List[int], List[int]]:
+) -> Tuple[int, int, List[int], List[int], float]:
     paths = list(iter_images(folder))
     paths.sort()
 
@@ -137,12 +138,13 @@ def evaluate_class(
     total_images = len(paths)
     if total_images == 0:
         print(f"- {class_name}: no images found under {folder}")
-        return 0, 0, [], []
+        return 0, 0, [], [], 0.0
 
     correct = 0
     actual_total = 0
     true_labels: List[int] = []
     pred_labels: List[int] = []
+    true_prob_sum = 0.0
     for start in range(0, total_images, batch_size):
         batch_paths = paths[start : start + batch_size]
         batch = load_batch(batch_paths, image_size)
@@ -158,8 +160,9 @@ def evaluate_class(
         correct += int((pred_idx == class_idx).sum())
         true_labels.extend([class_idx] * batch_size_actual)
         pred_labels.extend(pred_idx.tolist())
+        true_prob_sum += float(preds[:, class_idx].sum())
 
-    return correct, actual_total, true_labels, pred_labels
+    return correct, actual_total, true_labels, pred_labels, true_prob_sum
 
 
 def test_label_accuracy():
@@ -175,7 +178,7 @@ def test_label_accuracy():
     model = tf.keras.models.load_model(model_path)
     print(f"Loaded classes ({len(labels)}): {', '.join(labels)}")
 
-    results: Dict[str, Tuple[int, int]] = {}
+    results: Dict[str, Tuple[int, int, float]] = {}
     all_true: List[int] = []
     all_pred: List[int] = []
     for class_name in labels:
@@ -184,7 +187,7 @@ def test_label_accuracy():
             print(f"- {class_name}: folder not found at {class_folder}, skipping")
             continue
 
-        correct, total, class_true, class_pred = evaluate_class(
+        correct, total, class_true, class_pred, true_prob_sum = evaluate_class(
             model=model,
             class_name=class_name,
             class_idx=label_to_idx[class_name],
@@ -193,7 +196,7 @@ def test_label_accuracy():
             batch_size=BATCH_SIZE,
             max_images=MAX_IMAGES_PER_CLASS,
         )
-        results[class_name] = (correct, total)
+        results[class_name] = (correct, total, true_prob_sum)
         all_true.extend(class_true)
         all_pred.extend(class_pred)
 
@@ -201,13 +204,19 @@ def test_label_accuracy():
 
     print("\nPer-class accuracy:")
     for class_name in labels:
-        correct, total = results.get(class_name, (0, 0))
+        correct, total, true_prob_sum = results.get(class_name, (0, 0, 0.0))
         if total == 0:
             print(f"- {class_name}: no samples evaluated")
             continue
         acc = correct / total
-        print(f"- {class_name}: {correct}/{total} correct ({acc:.2%})")
-        label_results.append(f"{class_name}: {correct}/{total} correct ({acc:.2%})")
+        avg_true_prob = true_prob_sum / total
+        avg_gap = 1 - avg_true_prob
+        print(
+            f"- {class_name}: {correct}/{total} correct ({acc:.2%}), "
+            f"avg true-label confidence {avg_true_prob:.2%} "
+            f"(avg diff to 100%: {avg_gap:.2%})"
+        )
+        label_results.append(f"{class_name}: {correct}/{total} correct ({acc:.2%}), avg true-label confidence {avg_true_prob:.2%} ")
 
     return label_results, labels, all_true, all_pred
 
@@ -276,11 +285,17 @@ if __name__ == "__main__":
     log_extensive_testing(out_dir, f"Test-Set-Size : {MAX_IMAGES_PER_CLASS}")
     log_extensive_testing(out_dir, f"----------------------------------------------------")
 
+    start = datetime.now()
     label_results, labels, y_true, y_pred = test_label_accuracy()
+    end = datetime.now()
     log_extensive_testing(out_dir, f"Accuracy per Label:")
     for label in label_results:
         log_extensive_testing(out_dir, f" - {label}")
+    delta = end - start
+    seconds = delta.total_seconds()
+    log_extensive_testing(out_dir, f"{MAX_IMAGES_PER_CLASS*len(label_results)} iamges proccessed in {seconds} seconds. ({seconds/(MAX_IMAGES_PER_CLASS*len(label_results))} seconds/image)")
 
+    log_extensive_testing(out_dir, f"----------------------------------------------------")
     if y_true and y_pred:
         cm_path = save_confusion_matrix(y_true, y_pred, labels, out_dir)
         log_extensive_testing(out_dir, f"Confusion matrix saved to: {cm_path}")
