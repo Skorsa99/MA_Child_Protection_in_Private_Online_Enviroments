@@ -94,44 +94,110 @@ function preprocessImage(imgElement) {
 }
 
 async function classifyImage(file) {
-    const img = new Image();
-    img.onload = async () => {
-        const inputTensor = preprocessImage(img);
-        const prediction = model.predict(inputTensor);
-        const probs = await prediction.data();
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = async () => {
+            try {
+                const probs = tf.tidy(() => {
+                    const inputTensor = preprocessImage(img);
+                    const prediction = model.predict(inputTensor);
+                    return Array.from(prediction.dataSync());
+                });
 
-        const topIdx = probs.indexOf(Math.max(...probs));
-        const label = labels[topIdx];
-        
-        processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-        result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-        if (labels[topIdx] == "unsafe") {
-            processed_holder.classList.add("video-holder-unsafe");
-            result_display_holder.classList.add("video-holder-unsafe");
-        } else if (labels[topIdx] == "empty") {
-            processed_holder.classList.add("video-holder-empty");
-            result_display_holder.classList.add("video-holder-empty");
-        } else {
-            processed_holder.classList.add("video-holder-safe");
-            result_display_holder.classList.add("video-holder-safe");
+                const topIdx = probs.indexOf(Math.max(...probs));
+
+                processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+                result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+                if (labels[topIdx] == "unsafe") {
+                    processed_holder.classList.add("video-holder-unsafe");
+                    result_display_holder.classList.add("video-holder-unsafe");
+                } else if (labels[topIdx] == "empty") {
+                    processed_holder.classList.add("video-holder-empty");
+                    result_display_holder.classList.add("video-holder-empty");
+                } else {
+                    processed_holder.classList.add("video-holder-safe");
+                    result_display_holder.classList.add("video-holder-safe");
+                }
+                
+                document.getElementById("fps-counter-text").innerText = `... FPS`;
+                document.getElementById("fps-counter-text").style.color = "black";
+
+                console.log("Predictions:", labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", "));
+
+                result_display.textContent = labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", ");
+                resolve(labels[topIdx]);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+function classifyFileForBatch(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const probs = tf.tidy(() => {
+                    const inputTensor = preprocessImage(img);
+                    const prediction = model.predict(inputTensor);
+                    return Array.from(prediction.dataSync());
+                });
+                const topIdx = probs.indexOf(Math.max(...probs));
+                resolve(labels[topIdx]);
+            } catch (err) {
+                reject(err);
+            }
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+    });
+}
+
+async function classifyFiles(files) {
+    if (!files.length) return;
+    if (!model || !labels) await loadModelAndLabels();
+
+    const counts = Object.fromEntries(labels.map(l => [l, 0]));
+    const start = performance.now();
+
+    for (const file of files) {
+        try {
+            const label = await classifyFileForBatch(file);
+            counts[label] = (counts[label] || 0) + 1;
+        } catch (err) {
+            console.error("Error classifying file:", file?.name || file, err);
         }
-        
-        document.getElementById("fps-counter-text").innerText = `... FPS`;
-        document.getElementById("fps-counter-text").style.color = "black";
+    }
 
-        console.log("Predictions:", labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", "));
+    const elapsedMs = performance.now() - start;
+    const fps = files.length ? (files.length / (elapsedMs / 1000)) : 0;
+    const avgMs = files.length ? elapsedMs / files.length : 0;
 
-        result_display.textContent = labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", ");
-    };
-    img.src = URL.createObjectURL(file);
+    processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+    result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+
+    result_display.textContent = labels.map(l => `${l}: ${counts[l] ?? 0}`).join("; ");
+
+    const fpsText = files.length ? `~ ${fps.toFixed(1)} FPS (avg ${avgMs.toFixed(1)} ms/img)` : "... FPS";
+    document.getElementById("fps-counter-text").innerText = fpsText;
+    document.getElementById("fps-counter-text").style.color = "black";
 }
 
 document.getElementById('image-input').addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        if (!model || !labels) await loadModelAndLabels();
-        classifyImage(file);
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+
+    if (!model || !labels) await loadModelAndLabels();
+
+    if (files.length === 1) {
+        await classifyImage(files[0]);
+        return;
     }
+
+    await classifyFiles(files);
 });
 
 let lastTime = performance.now();
