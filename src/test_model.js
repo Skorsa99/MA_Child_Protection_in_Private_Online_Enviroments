@@ -8,7 +8,12 @@ const processed_holder = document.getElementById('processed-video-holder');
 const canvas = document.getElementById('canvas');
 const result_display = document.getElementById('result-text');
 const result_display_holder = document.getElementById('result-holder');
-const IMG_SIZE = 256
+const fpsCounterText = document.getElementById("fps-counter-text");
+const imageInput = document.getElementById('image-input');
+const canvasCtx = canvas.getContext('2d');
+const IMG_SIZE = 256;
+const INV_255 = 1 / 255;
+const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
 
 tf.ready().then(() => console.log('TF backend:', tf.getBackend()));
 
@@ -40,21 +45,6 @@ async function startVideoProcessing() {
     if (!videoEl.srcObject || videoStreamRunning) return;
     videoStreamRunning = true;
 
-    const ctx = canvas.getContext('2d');
-
-    const drawFrame = () => {
-        if (!videoStreamRunning) return;
-
-        // Draw current video frame into canvas (resized to IMG_SIZExIMG_SIZE)
-        ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
-
-        // You could also classify here if needed
-        // const imgTensor = preprocessImage(canvas);
-
-        requestAnimationFrame(drawFrame);
-    };
-
-    drawFrame();
     classifyFromCameraLoop_V2(); // 🔥 startet parallele Klassifikation
 }
 
@@ -79,18 +69,48 @@ async function loadModelAndLabels() {
 }
 
 function preprocessImage(imgElement) {
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
     // Draw and resize to IMG_SIZExIMG_SIZE
-    ctx.drawImage(imgElement, 0, 0, IMG_SIZE, IMG_SIZE);
-
-    const imageData = ctx.getImageData(0, 0, IMG_SIZE, IMG_SIZE);
-    let imgTensor = tf.browser.fromPixels(imageData)
+    canvasCtx.drawImage(imgElement, 0, 0, IMG_SIZE, IMG_SIZE);
+    return tf.browser.fromPixels(canvas)
         .toFloat()
-        .div(255.0); // match [0, 1] normalization used during training
+        .mul(INV_255)
+        .expandDims(0); // shape: [1, IMG_SIZE, IMG_SIZE, 3]
+}
 
-    return imgTensor.expandDims(0); // shape: [1, IMG_SIZE, IMG_SIZE, 3]
+function topIndex(probs) {
+    let maxVal = probs[0];
+    let maxIdx = 0;
+    for (let i = 1; i < probs.length; i++) {
+        if (probs[i] > maxVal) {
+            maxVal = probs[i];
+            maxIdx = i;
+        }
+    }
+    return maxIdx;
+}
+
+function applyBorderState(label) {
+    processed_holder.classList.remove(...CLASS_STATES);
+    result_display_holder.classList.remove(...CLASS_STATES);
+    if (label === "unsafe") {
+        processed_holder.classList.add("video-holder-unsafe");
+        result_display_holder.classList.add("video-holder-unsafe");
+    } else if (label === "empty") {
+        processed_holder.classList.add("video-holder-empty");
+        result_display_holder.classList.add("video-holder-empty");
+    } else {
+        processed_holder.classList.add("video-holder-safe");
+        result_display_holder.classList.add("video-holder-safe");
+    }
+}
+
+function formatProbs(probs) {
+    const pairs = [];
+    for (let i = 0; i < labels.length; i++) {
+        pairs.push([labels[i], probs[i]]);
+    }
+    pairs.sort((a, b) => b[1] - a[1]);
+    return pairs.map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", ");
 }
 
 async function classifyImage(file) {
@@ -101,36 +121,29 @@ async function classifyImage(file) {
                 const probs = tf.tidy(() => {
                     const inputTensor = preprocessImage(img);
                     const prediction = model.predict(inputTensor);
-                    return Array.from(prediction.dataSync());
+                    return prediction.dataSync(); // TypedArray, avoids async
                 });
 
-                const topIdx = probs.indexOf(Math.max(...probs));
+                const bestIdx = topIndex(probs);
 
-                processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-                result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-                if (labels[topIdx] == "unsafe") {
-                    processed_holder.classList.add("video-holder-unsafe");
-                    result_display_holder.classList.add("video-holder-unsafe");
-                } else if (labels[topIdx] == "empty") {
-                    processed_holder.classList.add("video-holder-empty");
-                    result_display_holder.classList.add("video-holder-empty");
-                } else {
-                    processed_holder.classList.add("video-holder-safe");
-                    result_display_holder.classList.add("video-holder-safe");
-                }
-                
-                document.getElementById("fps-counter-text").innerText = `... FPS`;
-                document.getElementById("fps-counter-text").style.color = "black";
+                applyBorderState(labels[bestIdx]);
+                fpsCounterText.innerText = `... FPS`;
+                fpsCounterText.style.color = "black";
 
-                console.log("Predictions:", labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", "));
-
-                result_display.textContent = labels.map((l, i) => [l, probs[i]]).sort((a, b) => b[1] - a[1]).map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`).join(", ");
-                resolve(labels[topIdx]);
+                const formatted = formatProbs(probs);
+                console.log("Predictions:", formatted);
+                result_display.textContent = formatted;
+                resolve(labels[bestIdx]);
             } catch (err) {
                 reject(err);
+            } finally {
+                URL.revokeObjectURL(img.src);
             }
         };
-        img.onerror = reject;
+        img.onerror = (err) => {
+            URL.revokeObjectURL(img.src);
+            reject(err);
+        };
         img.src = URL.createObjectURL(file);
     });
 }
@@ -140,18 +153,22 @@ function classifyFileForBatch(file) {
         const img = new Image();
         img.onload = () => {
             try {
-                const probs = tf.tidy(() => {
+                const topIdx = tf.tidy(() => {
                     const inputTensor = preprocessImage(img);
                     const prediction = model.predict(inputTensor);
-                    return Array.from(prediction.dataSync());
+                    return prediction.argMax(-1).dataSync()[0];
                 });
-                const topIdx = probs.indexOf(Math.max(...probs));
                 resolve(labels[topIdx]);
             } catch (err) {
                 reject(err);
+            } finally {
+                URL.revokeObjectURL(img.src);
             }
         };
-        img.onerror = reject;
+        img.onerror = (err) => {
+            URL.revokeObjectURL(img.src);
+            reject(err);
+        };
         img.src = URL.createObjectURL(file);
     });
 }
@@ -176,17 +193,17 @@ async function classifyFiles(files) {
     const fps = files.length ? (files.length / (elapsedMs / 1000)) : 0;
     const avgMs = files.length ? elapsedMs / files.length : 0;
 
-    processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-    result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
+    processed_holder.classList.remove(...CLASS_STATES);
+    result_display_holder.classList.remove(...CLASS_STATES);
 
     result_display.textContent = labels.map(l => `${l}: ${counts[l] ?? 0}`).join("; ");
 
     const fpsText = files.length ? `~ ${fps.toFixed(1)} FPS (avg ${avgMs.toFixed(1)} ms/img)` : "... FPS";
-    document.getElementById("fps-counter-text").innerText = fpsText;
-    document.getElementById("fps-counter-text").style.color = "black";
+    fpsCounterText.innerText = fpsText;
+    fpsCounterText.style.color = "black";
 }
 
-document.getElementById('image-input').addEventListener('change', async (event) => {
+imageInput.addEventListener('change', async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
 
@@ -205,8 +222,6 @@ let frames = 0;
 
 async function classifyFromCameraLoop() {
     if (!model || !labels) await loadModelAndLabels();
-
-    const ctx = canvas.getContext('2d');
 
     async function loop() {
         if (!videoStreamRunning) return;
@@ -269,7 +284,7 @@ function preprocessFromVideo(videoEl) {
     // Preprocessing for IMG_SIZE×IMG_SIZE, need to be the same as training
     const t = tf.browser.fromPixels(videoEl);                   // [H,W,3], RGB
     const r = tf.image.resizeBilinear(t, [IMG_SIZE, IMG_SIZE]);           // alignCorners=false by default (matches TF default)
-    const x = r.toFloat().div(255.0);                           // match [0, 1] normalization used during training
+    const x = r.toFloat().mul(INV_255);                         // match [0, 1] normalization used during training
     const input = x.expandDims(0);                              // [1,IMG_SIZE,IMG_SIZE,3]
     return input;
 }
@@ -277,8 +292,7 @@ function preprocessFromVideo(videoEl) {
 async function classifyFromCameraLoop_V2() {
     if (!model || !labels) await loadModelAndLabels();
 
-    const ctx = canvas.getContext('2d');
-    const targetMs = 1000 / 1000; // ~1000 FPS inference limit if we want to limit fps
+    const targetMs = 0; // run every RAF for max throughput
     let lastInfer = 0;
     let firstLogDone = false;
 
@@ -286,7 +300,7 @@ async function classifyFromCameraLoop_V2() {
         if (!videoStreamRunning) return;
 
         // 1) Visualize exactly what the model sees
-        ctx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
+        canvasCtx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
 
         // 2) Classify straight from the video element (not the canvas)
         if (videoEl.readyState >= 2 && (ts - lastInfer) >= targetMs) {
@@ -303,7 +317,7 @@ async function classifyFromCameraLoop_V2() {
                 */
             });
 
-            const topIdx = probs.indexOf(Math.max(...probs));
+            const topIdx = topIndex(probs);
 
             // One-time sanity logs
             if (!firstLogDone) {
@@ -320,19 +334,7 @@ async function classifyFromCameraLoop_V2() {
                 .map(([l, p]) => `${l}: ${(p * 100).toFixed(1)}%`)
                 .join(", ");
 
-            processed_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-            result_display_holder.classList.remove("video-holder-unsafe", "video-holder-safe", "video-holder-empty");
-
-            if (labels[topIdx] === "unsafe") {
-                processed_holder.classList.add("video-holder-unsafe");
-                result_display_holder.classList.add("video-holder-unsafe");
-            } else if (labels[topIdx] === "empty") {
-                processed_holder.classList.add("video-holder-empty");
-                result_display_holder.classList.add("video-holder-empty");
-            } else {
-                processed_holder.classList.add("video-holder-safe");
-                result_display_holder.classList.add("video-holder-safe");
-            }
+            applyBorderState(labels[topIdx]);
 
             // FPS counter logic
             frames++;
@@ -340,13 +342,13 @@ async function classifyFromCameraLoop_V2() {
             const elapsed = now - lastTime;
             if (elapsed >= 1000) {
                 const fps = frames;
-                document.getElementById("fps-counter-text").innerText = `~ ${fps} FPS`;
+                fpsCounterText.innerText = `~ ${fps} FPS`;
                 if (fps >= 30) {
-                    document.getElementById("fps-counter-text").style.color = "limegreen";
+                    fpsCounterText.style.color = "limegreen";
                 } else if (fps >= 10) {
-                    document.getElementById("fps-counter-text").style.color = "orange";
+                    fpsCounterText.style.color = "orange";
                 } else {
-                    document.getElementById("fps-counter-text").style.color = "red";
+                    fpsCounterText.style.color = "red";
                 }
                 frames = 0;
                 lastTime = now;
