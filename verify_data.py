@@ -5,13 +5,16 @@ from pathlib import Path
 from custom_logging import log_data_filtering, image_tally
 
 app = Flask(__name__)
-MODE = "safe"
-SUBREDDIT = "SelfieOver25"
-IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")
+MODE = "empty"
+SUBREDDIT = "NYCapartments"
+# IMAGE_DIR = Path(f"data/reddit_pics/{MODE}/{SUBREDDIT}")
+IMAGE_DIR = Path(f"data/test_pics/{MODE}/{SUBREDDIT}")
 image_list = sorted([f for f in IMAGE_DIR.iterdir() if f.suffix.lower() in [".jpg", ".jpeg", ".png"]])
 TOTAL_AT_START = len(image_list)
 current_index = 0
 last_deleted = []
+
+loggin_flag = False # Set to true to enable logging
 
 @app.route('/')
 def frontend():
@@ -56,7 +59,8 @@ def delete_image():
     try:
         # Move the image to deleted_pics directory instead of deleting
         orig_path = image_list[current_index]
-        new_path = Path(str(orig_path).replace("reddit_pics", "deleted_pics/varification"))
+        # new_path = Path(str(orig_path).replace("reddit_pics", "deleted_pics/varification"))
+        new_path = Path(str(orig_path).replace("test_pics", "deleted_pics/varification_test"))
         new_path.parent.mkdir(parents=True, exist_ok=True)
         orig_path.rename(new_path)
         # Store for undo
@@ -64,8 +68,9 @@ def delete_image():
         print(f"Moved: {orig_path} to {new_path}")
         image_list.pop(current_index)
         if MODE != "TESTS": # Only tally the images when we are in an actually importantly folder
-            image_tally(-1, MODE)
-            log_data_filtering(f"Deleted: {orig_path} to {new_path}")
+            if loggin_flag == True:
+                image_tally(-1, MODE)
+                log_data_filtering(f"Deleted: {orig_path} to {new_path}")
         return jsonify({"deleted": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -87,8 +92,9 @@ def undo_delete():
     global current_index
     current_index = idx
     if MODE != "TESTS": # Only tally the images when we are in an actually importantly folder
-        image_tally(1, MODE)
-        log_data_filtering(f"Restored: {deleted_path} to {orig_path}")
+        if loggin_flag == True:
+            image_tally(1, MODE)
+            log_data_filtering(f"Restored: {deleted_path} to {orig_path}")
     return jsonify({"restored": True, "filename": orig_path.name})
 
 @app.route('/previous', methods=["POST"])

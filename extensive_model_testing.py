@@ -33,12 +33,12 @@ from custom_logging import log_extensive_testing
 # Settings
 # --------------------------------------------------------------------------------------
 DATA_DIR: Path = Path("data/reddit_pics")   # Root folder that contains one subfolder per class
-MODEL_DIR: Path = Path("models/V_4_6")      # Folder containing the saved model + labels.json
+MODEL_DIR: Path = Path("models/V_4_7")      # Folder containing the saved model + labels.json
 MODEL_FILE: Path | None = None              # Optional explicit path to a .keras or .h5 file
 LABELS_PATH: Path | None = None             # Optional explicit labels.json path
 IMAGE_SIZE: int = 256                       # Resize images to IMAGE_SIZE x IMAGE_SIZE
 BATCH_SIZE: int = 32                        # Number of images per prediction batch
-MAX_IMAGES_PER_CLASS: int = 500#None            # Limit images evaluated per class (None = all)
+MAX_IMAGES_PER_CLASS: int = None            # Limit images evaluated per class (None = all)
 # --------------------------------------------------------------------------------------
 
 IMAGE_EXTS = {
@@ -165,7 +165,7 @@ def evaluate_class(
     return correct, actual_total, true_labels, pred_labels, true_prob_sum
 
 
-def test_label_accuracy():
+def test_label_accuracy() -> tuple[list[str], list[str], list[int], list[int], int]:
     if not DATA_DIR.is_dir():
         raise FileNotFoundError(f"Data directory not found: {DATA_DIR}")
 
@@ -181,6 +181,7 @@ def test_label_accuracy():
     results: Dict[str, Tuple[int, int, float]] = {}
     all_true: List[int] = []
     all_pred: List[int] = []
+    total_processed = 0
     for class_name in labels:
         class_folder = DATA_DIR / class_name
         if not class_folder.exists():
@@ -199,11 +200,27 @@ def test_label_accuracy():
         results[class_name] = (correct, total, true_prob_sum)
         all_true.extend(class_true)
         all_pred.extend(class_pred)
+        total_processed += total
 
     label_results = []
+    num_classes = len(labels)
+    tp = [0] * num_classes
+    fp = [0] * num_classes
+    fn = [0] * num_classes
+
+    for t, p in zip(all_true, all_pred):
+        if 0 <= t < num_classes and 0 <= p < num_classes:
+            if t == p:
+                tp[t] += 1
+            else:
+                fp[p] += 1
+                fn[t] += 1
+
+    def safe_div(a: float, b: float) -> float:
+        return a / b if b else 0.0
 
     print("\nPer-class accuracy:")
-    for class_name in labels:
+    for idx, class_name in enumerate(labels):
         correct, total, true_prob_sum = results.get(class_name, (0, 0, 0.0))
         if total == 0:
             print(f"- {class_name}: no samples evaluated")
@@ -211,14 +228,22 @@ def test_label_accuracy():
         acc = correct / total
         avg_true_prob = true_prob_sum / total
         avg_gap = 1 - avg_true_prob
+        precision = safe_div(tp[idx], tp[idx] + fp[idx])
+        recall = safe_div(tp[idx], tp[idx] + fn[idx])
+        f1 = safe_div(2 * precision * recall, precision + recall)
         print(
             f"- {class_name}: {correct}/{total} correct ({acc:.2%}), "
             f"avg true-label confidence {avg_true_prob:.2%} "
-            f"(avg diff to 100%: {avg_gap:.2%})"
+            f"(avg diff to 100%: {avg_gap:.2%}), "
+            f"precision {precision:.2%}, recall {recall:.2%}, f1 {f1:.2%}"
         )
-        label_results.append(f"{class_name}: {correct}/{total} correct ({acc:.2%}), avg true-label confidence {avg_true_prob:.2%} ")
+        label_results.append(
+            f"{class_name}: {correct}/{total} correct ({acc:.2%}), "
+            f"avg true-label confidence {avg_true_prob:.2%}, "
+            f"precision {precision:.2%}, recall {recall:.2%}, f1 {f1:.2%}"
+        )
 
-    return label_results, labels, all_true, all_pred
+    return label_results, labels, all_true, all_pred, total_processed
 
 
 def save_confusion_matrix(
@@ -286,14 +311,20 @@ if __name__ == "__main__":
     log_extensive_testing(out_dir, f"----------------------------------------------------")
 
     start = datetime.now()
-    label_results, labels, y_true, y_pred = test_label_accuracy()
+    label_results, labels, y_true, y_pred, total_processed = test_label_accuracy()
     end = datetime.now()
     log_extensive_testing(out_dir, f"Accuracy per Label:")
     for label in label_results:
         log_extensive_testing(out_dir, f" - {label}")
     delta = end - start
     seconds = delta.total_seconds()
-    log_extensive_testing(out_dir, f"{MAX_IMAGES_PER_CLASS*len(label_results)} iamges proccessed in {seconds} seconds. ({seconds/(MAX_IMAGES_PER_CLASS*len(label_results))} seconds/image)")
+    per_image = seconds / total_processed if total_processed else 0
+    fps_logged = total_processed / seconds
+    log_extensive_testing(
+        out_dir,
+        f"{total_processed} images processed in {seconds:.2f} seconds. "
+        f"({per_image:.4f} seconds/image = {fps_logged}FPS)"
+    )
 
     log_extensive_testing(out_dir, f"----------------------------------------------------")
     if y_true and y_pred:

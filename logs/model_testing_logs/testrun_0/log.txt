@@ -1,0 +1,26 @@
+2025-12-03 16:36:53 | --- Test Started -----------------------------------
+2025-12-03 16:36:53 | Model Tested  : models/V_4_6
+2025-12-03 16:36:53 | Dataset       : data/reddit_pics
+2025-12-03 16:36:53 | Batch Size    : 32
+2025-12-03 16:36:53 | Test-Set-Size : None
+2025-12-03 16:36:53 | ----------------------------------------------------
+2025-12-03 17:27:19 | Accuracy per Label:
+2025-12-03 17:27:19 |  - empty: 14106/14741 correct (95.69%), avg true-label confidence 93.43%, precision 94.61%, recall 95.69%, f1 95.15%
+2025-12-03 17:27:19 |  - safe: 90437/93347 correct (96.88%), avg true-label confidence 95.52%, precision 95.79%, recall 96.88%, f1 96.34%
+2025-12-03 17:27:19 |  - unsafe: 103303/106829 correct (96.70%), avg true-label confidence 95.68%, precision 97.82%, recall 96.70%, f1 97.26%
+2025-12-03 17:27:19 | 214917 images processed in 3026.50 seconds. (0.0141 seconds/image = 71.01164004411424FPS)
+2025-12-03 17:27:19 | ----------------------------------------------------
+2025-12-03 17:27:19 | Confusion matrix saved to: logs/model_testing_logs/testrun_0/confusion_matrix.png
+2025-12-05 14:55:57 | --- Test Started -----------------------------------
+2025-12-05 14:55:57 | Model Tested  : models/V_4_7
+2025-12-05 14:55:57 | Dataset       : data/reddit_pics
+2025-12-05 14:55:57 | Batch Size    : 32
+2025-12-05 14:55:57 | Test-Set-Size : None
+2025-12-05 14:55:57 | ----------------------------------------------------
+2025-12-05 15:46:41 | Accuracy per Label:
+2025-12-05 15:46:41 |  - empty: 14531/14741 correct (98.58%), avg true-label confidence 97.68%, precision 70.94%, recall 98.58%, f1 82.51%
+2025-12-05 15:46:41 |  - safe: 84455/93347 correct (90.47%), avg true-label confidence 88.86%, precision 95.84%, recall 90.47%, f1 93.08%
+2025-12-05 15:46:41 |  - unsafe: 103011/106829 correct (96.43%), avg true-label confidence 95.40%, precision 96.89%, recall 96.43%, f1 96.66%
+2025-12-05 15:46:41 | 214917 images processed in 3044.13 seconds. (0.0142 seconds/image = 70.60043716406172FPS)
+2025-12-05 15:46:41 | ----------------------------------------------------
+2025-12-05 15:46:41 | Confusion matrix saved to: logs/model_testing_logs/testrun_0/confusion_matrix.png

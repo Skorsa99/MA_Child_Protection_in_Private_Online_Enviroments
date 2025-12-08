@@ -510,10 +510,25 @@ if __name__ == "__main__":
         ["MyRoom", "empty"],
     ]
 
+    test_subreddits = [
+        # --- unsafe ---
+        # ["buttsgonewild", "unsafe"], # Cleaned (2,5% error rate)
+        # ["penis", "unsafe"],
+
+        # --- safe ---
+        ["Faces", "safe"], # Cleaned (0% error rate)
+
+        # --- empty ---
+        # ["NYCapartments", "empty"],
+    ]
+
     run_counter = 0 # Counts how many images where stored in this run
 
-    for SUBREDDIT, CATEGORY in safe_only_subreddits:
-        SAVE_DIR = f'data/reddit_pics/{CATEGORY}/{SUBREDDIT}'
+    for SUBREDDIT, CATEGORY in test_subreddits:
+        # STOR_LOC = 'reddit_pics'
+        STOR_LOC = 'test_pics'
+
+        SAVE_DIR = f'data/{STOR_LOC}/{CATEGORY}/{SUBREDDIT}'
 
         image_counter, post_counter = collect_data(SUBREDDIT, SAVE_DIR)
         saved, error_rate = convert_videos(SAVE_DIR)
@@ -521,16 +536,23 @@ if __name__ == "__main__":
 
         image_counter = image_counter - (error_rate + counter_ed + counter_e)
 
-        image_tally_variable = image_tally_v2(f'data/reddit_pics/{CATEGORY}', CATEGORY)
-        if counter_e > 0:
-            end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files [with {counter_e} unhandled errors]. Updated tally: {image_tally_variable}"
+        if STOR_LOC != 'test_pics':
+            image_tally_variable = image_tally_v2(f'data/reddit_pics/{CATEGORY}', CATEGORY)
+            if counter_e > 0:
+                end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files [with {counter_e} unhandled errors]."
+            else:
+                end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files."
+            print(end_message)
         else:
-            end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files. Updated tally: {image_tally_variable}"
-        print(end_message)
+            if counter_e > 0:
+                end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files [with {counter_e} unhandled errors]."
+            else:
+                end_message = f"Completed download of {post_counter} posts for '{SUBREDDIT}', and stored {image_counter} media files."
+            print(end_message)
 
         run_counter += image_counter
 
-        if CATEGORY != "TESTS":
+        if CATEGORY != "TESTS" and STOR_LOC != 'test_pics':
             log_data_collection(end_message)
 
     print(f"------------------------------------------------------------------------")
