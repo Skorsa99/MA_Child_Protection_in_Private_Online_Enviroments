@@ -57,7 +57,7 @@ IMAGE_EXTS = {
 
 def _get_ourdir(logs_dir="logs/model_testing_logs") -> str:
     os.makedirs(logs_dir, exist_ok=True)
-    pattern = re.compile(rf"test_(\d+)$")
+    pattern = re.compile(rf"testrun_(\d+)$")
     subversions = []
 
     for name in os.listdir(logs_dir):
