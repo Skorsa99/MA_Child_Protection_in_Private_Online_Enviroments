@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPiPOE-HomePage</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        .title {
+            width: calc(100% - 60px);
+            margin: 30px;
+            font-size: 50px;
+            color: black;
+            font-family: sans-serif;
+            font-weight: bold;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .text {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            width: calc(100% - 60px);
+            margin-left: 30px;
+            font-family: sans-serif;
+            text-align: center;
+            font-size: 16px;
+            color: black;
+        }
+
+        .button {
+            width: calc(100% - 60px);
+            height: 150px;
+            margin: 30px;
+            border: solid black 5px;
+            border-radius: 10px;
+            box-sizing: border-box;
+            cursor: pointer;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+        }
+    </style>
+</head>
+    <body style="background-color: white; width: 100%; height: 100%; box-sizing: border-box; overflow-x: hidden; display: flex; flex-direction: column; min-height: 100vh;">
+        <div class="title">Child Protection in Private Online Eviroments</div>
+        <div class="text">
+            <p>
+                This page is part of the Master’s Thesis by <b>Samuel Skorsetz</b>, which aims to improve
+                child protection in private online environments by developing a nudity-detection
+                AI model that runs fully in the user’s browser.
+            </p>
+
+            <p>
+                The goal of the project is to enable real-time detection of unsafe visual content
+                during video calls without sending any images or videos to external servers.
+                This ensures strong privacy, especially in scenarios involving children.
+            </p>
+
+            <ul style="text-align:left; display:inline-block; margin:auto;">
+                <li>The model runs entirely on the child’s device (no data leaves the browser).</li>
+                <li>It classifies images into <b>safe</b>, <b>unsafe</b>, and <b>empty</b>.</li>
+                <li>Optimized for real-time use, even on low- to mid-range hardware.</li>
+                <li>Designed for video-call platforms, online tutoring, and similar use cases.</li>
+                <li>Built on a large, partially manually verified dataset to ensure reliable accuracy.</li>
+            </ul>
+
+            <p>
+                By clicking the <b>“Test the Model”</b> button below, you will be taken to an interactive
+                demo where you can activate your camera or upload images and see how the
+                model classifies them—including a preview of how the model interprets your input.
+            </p>
+        </div>
+        <button class="button" style="margin-top: auto;" onclick="window.location.href='src/ui/test_model.html';">Test the Model</button>
+    </body>
+</html>
