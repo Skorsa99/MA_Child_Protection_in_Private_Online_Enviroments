@@ -32,8 +32,8 @@ from custom_logging import log_extensive_testing
 # --------------------------------------------------------------------------------------
 # Settings
 # --------------------------------------------------------------------------------------
-DATA_DIR: Path = Path("data/reddit_pics")   # Root folder that contains one subfolder per class
-MODEL_DIR: Path = Path("models/V_4_7")      # Folder containing the saved model + labels.json
+DATA_DIR: Path = Path("data/test_pics")     # Root folder that contains one subfolder per class
+MODEL_DIR: Path = Path("models/V_4_6")      # Folder containing the saved model + labels.json
 MODEL_FILE: Path | None = None              # Optional explicit path to a .keras or .h5 file
 LABELS_PATH: Path | None = None             # Optional explicit labels.json path
 IMAGE_SIZE: int = 256                       # Resize images to IMAGE_SIZE x IMAGE_SIZE

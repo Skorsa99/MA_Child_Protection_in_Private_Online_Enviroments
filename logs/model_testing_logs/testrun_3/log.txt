@@ -1,0 +1,13 @@
+2025-12-08 19:18:46 | --- Test Started -----------------------------------
+2025-12-08 19:18:46 | Model Tested  : models/V_4_6
+2025-12-08 19:18:46 | Dataset       : data/test_pics
+2025-12-08 19:18:46 | Batch Size    : 32
+2025-12-08 19:18:46 | Test-Set-Size : None
+2025-12-08 19:18:46 | ----------------------------------------------------
+2025-12-08 19:19:33 | Accuracy per Label:
+2025-12-08 19:19:33 |  - empty: 964/1000 correct (96.40%), avg true-label confidence 95.35%, precision 100.00%, recall 96.40%, f1 98.17%
+2025-12-08 19:19:33 |  - safe: 986/1000 correct (98.60%), avg true-label confidence 97.62%, precision 95.54%, recall 98.60%, f1 97.05%
+2025-12-08 19:19:33 |  - unsafe: 990/1000 correct (99.00%), avg true-label confidence 98.16%, precision 98.61%, recall 99.00%, f1 98.80%
+2025-12-08 19:19:33 | 3000 images processed in 47.01 seconds. (0.0157 seconds/image = 63.820571271973975FPS)
+2025-12-08 19:19:33 | ----------------------------------------------------
+2025-12-08 19:19:33 | Confusion matrix saved to: logs/model_testing_logs/testrun_3/confusion_matrix.png
