@@ -14,6 +14,7 @@ const canvasCtx = canvas.getContext('2d');
 const IMG_SIZE = 256;
 const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
+const UI_UPDATE_MS = 150; // throttle UI/paint updates to avoid slowing raw throughput
 
 tf.ready().then(() => console.log('TF backend:', tf.getBackend()));
 
@@ -44,6 +45,7 @@ camToggle.addEventListener('change', async (event) => {
 async function startVideoProcessing() {
     if (!videoEl.srcObject || videoStreamRunning) return;
     videoStreamRunning = true;
+    resetFpsCounters();
 
     classifyFromCameraLoop_V2(); // 🔥 startet parallele Klassifikation
 }
@@ -220,8 +222,15 @@ imageInput.addEventListener('change', async (event) => {
 let lastTime = performance.now();
 let frames = 0;
 
+function resetFpsCounters() {
+    frames = 0;
+    lastTime = performance.now();
+}
+
 async function classifyFromCameraLoop() {
     if (!model || !labels) await loadModelAndLabels();
+
+    resetFpsCounters();
 
     async function loop() {
         if (!videoStreamRunning) return;
@@ -261,8 +270,8 @@ async function classifyFromCameraLoop() {
         const now = performance.now();
         const elapsed = now - lastTime;
         if (elapsed >= 1000) {
-            const fps = frames;
-            document.getElementById("fps-counter-text").innerText = `~ ${fps} FPS`;
+            const fps = (frames * 1000) / elapsed;
+            document.getElementById("fps-counter-text").innerText = `~ ${fps.toFixed(1)} FPS`;
             if (fps >= 30) {
                 document.getElementById("fps-counter-text").style.color = "limegreen";
             } else if (fps >= 10) {
@@ -292,18 +301,18 @@ function preprocessFromVideo(videoEl) {
 async function classifyFromCameraLoop_V2() {
     if (!model || !labels) await loadModelAndLabels();
 
-    const targetMs = 0; // run every RAF for max throughput
-    let lastInfer = 0;
     let firstLogDone = false;
 
-    async function loop(ts) {
+    resetFpsCounters();
+
+    async function loop() {
         if (!videoStreamRunning) return;
 
         // 1) Visualize exactly what the model sees
         canvasCtx.drawImage(videoEl, 0, 0, IMG_SIZE, IMG_SIZE);
 
         // 2) Classify straight from the video element (not the canvas)
-        if (videoEl.readyState >= 2 && (ts - lastInfer) >= targetMs) {
+        if (videoEl.readyState >= 2) {
             const probs = await tf.tidy(() => {
                 const input = preprocessFromVideo(videoEl);
                 const pred = model.predict(input);        // softmax from Keras layers model
@@ -343,8 +352,8 @@ async function classifyFromCameraLoop_V2() {
             const now = performance.now();
             const elapsed = now - lastTime;
             if (elapsed >= 1000) {
-                const fps = frames;
-                fpsCounterText.innerText = `~ ${fps} FPS`;
+                const fps = (frames * 1000) / elapsed;
+                fpsCounterText.innerText = `~ ${fps.toFixed(1)} FPS`;
                 if (fps >= 30) {
                     fpsCounterText.style.color = "limegreen";
                 } else if (fps >= 10) {
@@ -356,11 +365,10 @@ async function classifyFromCameraLoop_V2() {
                 lastTime = now;
             }
 
-            lastInfer = ts;
         }
 
-        requestAnimationFrame(loop);
+        setTimeout(loop, 0); // run as fast as the model/browser allow, not tied to display refresh
     }
 
-    requestAnimationFrame(loop);
+    setTimeout(loop, 0);
 }
