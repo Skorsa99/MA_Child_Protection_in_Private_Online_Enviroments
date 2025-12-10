@@ -321,10 +321,12 @@ async function classifyFromCameraLoop_V2() {
 
             // One-time sanity logs
             if (!firstLogDone) {
+                console.log("--- Sanity Check on first frame ----------------------------------------------------------")
                 console.log("model units:", model.layers.at(-1).units, "labels length:", labels.length);
                 const sum = probs[0] + probs[1] + probs[2];
                 console.log("sum(probs) ~", sum.toFixed(4), "top:", labels[topIdx], "p=", probs[topIdx].toFixed(3));
                 firstLogDone = true;
+                console.log("------------------------------------------------------------------------------------------")
             }
 
             // Update UI
