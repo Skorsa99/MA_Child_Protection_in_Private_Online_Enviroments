@@ -16,6 +16,10 @@ const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
 const UI_UPDATE_MS = 150; // throttle UI/paint updates to avoid slowing raw throughput
 const BACKEND_PREFERENCE = ["webgpu", "webgl", "cpu"]; // prefer WebGPU → WebGL → CPU fallback
+const TESTSUIT_VERSION = "V_2";
+const MODEL_TO_USE = 'V_4_6/model_tfjs';
+
+document.getElementById('version-holder').innerHTML = "TestSuit_V: " + TESTSUIT_VERSION + " | Model_V: " + MODEL_TO_USE
 
 async function tensorData(tensor) {
     // Use async reads on WebGPU to avoid sync stalls; sync reads elsewhere
@@ -88,7 +92,6 @@ function stopVideoProcessing() {
 let model;
 let labels;
 let modelLoadingPromise = null;
-model_to_use = 'V_4_6/model_tfjs'
 
 async function loadModelAndLabels() {
     if (model && labels) return;
@@ -98,8 +101,8 @@ async function loadModelAndLabels() {
     }
     modelLoadingPromise = (async () => {
         await ensureBackend();
-        model = await tf.loadLayersModel('../../models/' + model_to_use + '/model.json');
-        const labelsRes = await fetch('../../models/' + model_to_use + '/labels.json');
+        model = await tf.loadLayersModel('../../models/' + MODEL_TO_USE + '/model.json');
+        const labelsRes = await fetch('../../models/' + MODEL_TO_USE + '/labels.json');
         // model = await tf.loadLayersModel('../../models/V_4_6_2/model_tfjs_q8/model.json');
         // const labelsRes = await fetch('../../models/V_4_6_2/model_tfjs_q8/labels.json');
         labels = await labelsRes.json();
@@ -367,7 +370,7 @@ async function classifyFromCameraLoop_V2() {
             // One-time sanity logs
             if (!firstLogDone) {
                 console.log("--- Sanity Check on first frame ----------------------------------------------------------")
-                console.log("Used Model: " + model_to_use);
+                console.log("Used Model: " + MODEL_TO_USE);
                 console.log("model units:", model.layers.at(-1).units, "labels length:", labels.length);
                 const sum = probs[0] + probs[1] + probs[2];
                 console.log("sum(probs) ~", sum.toFixed(4), "top:", labels[topIdx], "p=", probs[topIdx].toFixed(3));
