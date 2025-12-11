@@ -15,8 +15,33 @@ const IMG_SIZE = 256;
 const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
 const UI_UPDATE_MS = 150; // throttle UI/paint updates to avoid slowing raw throughput
+const BACKEND_PREFERENCE = ["webgpu", "webgl", "cpu"]; // prefer WebGPU → WebGL → CPU fallback
 
-tf.ready().then(() => console.log('TF backend:', tf.getBackend()));
+async function tensorData(tensor) {
+    // Use async reads on WebGPU to avoid sync stalls; sync reads elsewhere
+    if (tf.getBackend() === "webgpu") {
+        return await tensor.data();
+    }
+    return tensor.dataSync();
+}
+
+let backendReadyPromise = null;
+async function ensureBackend() {
+    if (backendReadyPromise) return backendReadyPromise;
+    backendReadyPromise = (async () => {
+        for (const name of BACKEND_PREFERENCE) {
+            try {
+                await tf.setBackend(name);
+                break;
+            } catch (err) {
+                console.warn(`Failed to set backend ${name}, trying next`, err);
+            }
+        }
+        await tf.ready();
+        console.log("TF backend:", tf.getBackend());
+    })();
+    return backendReadyPromise;
+}
 
 let videoStreamRunning = false;
 
@@ -62,12 +87,25 @@ function stopVideoProcessing() {
 // app.js
 let model;
 let labels;
+let modelLoadingPromise = null;
+model_to_use = 'V_4_6/model_tfjs'
 
 async function loadModelAndLabels() {
-    model = await tf.loadLayersModel('../../models/V_4_6/model_tfjs/model.json');
-    const labelsRes = await fetch('../../models/V_4_6/model_tfjs/labels.json');
-    labels = await labelsRes.json();
-    console.log("Model and labels loaded.");
+    if (model && labels) return;
+    if (modelLoadingPromise) {
+        await modelLoadingPromise;
+        return;
+    }
+    modelLoadingPromise = (async () => {
+        await ensureBackend();
+        model = await tf.loadLayersModel('../../models/' + model_to_use + '/model.json');
+        const labelsRes = await fetch('../../models/' + model_to_use + '/labels.json');
+        // model = await tf.loadLayersModel('../../models/V_4_6_2/model_tfjs_q8/model.json');
+        // const labelsRes = await fetch('../../models/V_4_6_2/model_tfjs_q8/labels.json');
+        labels = await labelsRes.json();
+        console.log("Model and labels loaded.");
+    })();
+    await modelLoadingPromise;
 }
 
 function preprocessImage(imgElement) {
@@ -120,11 +158,12 @@ async function classifyImage(file) {
         const img = new Image();
         img.onload = async () => {
             try {
-                const probs = tf.tidy(() => {
+                const prediction = tf.tidy(() => {
                     const inputTensor = preprocessImage(img);
-                    const prediction = model.predict(inputTensor);
-                    return prediction.dataSync(); // TypedArray, avoids async
+                    return model.predict(inputTensor);
                 });
+                const probs = await tensorData(prediction);
+                prediction.dispose?.();
 
                 const bestIdx = topIndex(probs);
 
@@ -153,12 +192,15 @@ async function classifyImage(file) {
 function classifyFileForBatch(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
-        img.onload = () => {
+        img.onload = async () => {
             try {
-                const topIdx = tf.tidy(() => {
+                const topIdx = await tf.tidy(async () => {
                     const inputTensor = preprocessImage(img);
                     const prediction = model.predict(inputTensor);
-                    return prediction.argMax(-1).dataSync()[0];
+                    const arg = prediction.argMax(-1);
+                    const res = await tensorData(arg);
+                    arg.dispose?.();
+                    return res[0];
                 });
                 resolve(labels[topIdx]);
             } catch (err) {
@@ -313,24 +355,19 @@ async function classifyFromCameraLoop_V2() {
 
         // 2) Classify straight from the video element (not the canvas)
         if (videoEl.readyState >= 2) {
-            const probs = await tf.tidy(() => {
+            const prediction = tf.tidy(() => {
                 const input = preprocessFromVideo(videoEl);
-                const pred = model.predict(input);        // softmax from Keras layers model
-                return pred.dataSync();            // ✅ TypedArray, no Promise
-                /* Switch between the two blocks to deactivate inference
-                const fake = new Float32Array(labels.length);
-                fake.fill(0 / labels.length);        // equal odds for every class // currently set everything to 0
-                // fake[1] = 0.9;                    // optional: bias one class to mimic a “real” result
-                // console.log("This is without inference")
-                return fake;
-                */
+                return model.predict(input);        // softmax from Keras layers model
             });
+            const probs = await tensorData(prediction);
+            prediction.dispose?.();
 
             const topIdx = topIndex(probs);
 
             // One-time sanity logs
             if (!firstLogDone) {
                 console.log("--- Sanity Check on first frame ----------------------------------------------------------")
+                console.log("Used Model: " + model_to_use);
                 console.log("model units:", model.layers.at(-1).units, "labels length:", labels.length);
                 const sum = probs[0] + probs[1] + probs[2];
                 console.log("sum(probs) ~", sum.toFixed(4), "top:", labels[topIdx], "p=", probs[topIdx].toFixed(3));
