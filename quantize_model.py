@@ -23,7 +23,7 @@ from pathlib import Path
 # =====================
 
 MODELS_ROOT = Path("models")                # Root folder containing versioned model folders
-MODEL_VERSION = "V_4_6_2"                   # Version folder name (overridden by --model-dir)
+MODEL_VERSION = "V_4_7"                     # Version folder name (overridden by --model-dir)
 TFJS_SUBDIR_NAME = "model_tfjs"             # Folder with model.json + weight shards
 OUTPUT_SUBDIR_NAME = "model_tfjs_q8"        # Where the quantized model will be written
 QUANTIZATION_BYTES = 1                      # 1=8-bit, 2=16-bit, 4=32-bit (no compression)
