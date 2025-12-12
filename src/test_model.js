@@ -203,15 +203,18 @@ function classifyFileForBatch(file) {
         const img = new Image();
         img.onload = async () => {
             try {
-                const topIdx = await tf.tidy(async () => {
+                // Keep tidy sync; await reads after tensors are materialized so they aren't disposed early
+                const prediction = tf.tidy(() => {
                     const inputTensor = preprocessImage(img);
-                    const prediction = model.predict(inputTensor);
-                    const arg = prediction.argMax(-1);
-                    const res = await tensorData(arg);
-                    arg.dispose?.();
-                    return res[0];
+                    return model.predict(inputTensor);
                 });
-                resolve(labels[topIdx]);
+                const arg = prediction.argMax(-1);
+                const res = await tensorData(arg);
+                const label = labels[res[0]];
+
+                prediction.dispose?.();
+                arg.dispose?.();
+                resolve(label);
             } catch (err) {
                 reject(err);
             } finally {
