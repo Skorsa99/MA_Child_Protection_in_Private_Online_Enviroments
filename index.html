@@ -32,17 +32,36 @@
             color: black;
         }
 
+        .button-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
         .button {
             width: 100%;
             height: 150px;
             margin-top: 30px;
             border: solid black 5px;
+            color: black;
+            background-color: darkgrey;
             border-radius: 10px;
             box-sizing: border-box;
             cursor: pointer;
             font-family: sans-serif;
             font-weight: bold;
             font-size: 16px;
+        }
+
+        @media (max-width: 700px) {
+            .button-row {
+                flex-direction: column;
+            }
+
+            .button {
+                margin-top: 0px;
+            }
         }
     </style>
 </head>
@@ -75,6 +94,12 @@
                 model classifies them—including a preview of how the model interprets your input.
             </p>
         </div>
-        <button class="button" style="margin-top: auto;" onclick="window.location.href='src/ui/test_model.html';">Test the Model</button>
+        <div class="button-row" style="margin-top: auto;">
+            <button class="button" onclick="window.location.href='src/ui/test_model.html?model=V_4_6/model_tfjs';">Test V_4_6</button>
+            <button class="button" onclick="window.location.href='src/ui/test_model.html?model=V_4_6/model_tfjs_q16';">Test V_4_6 (q16)</button>
+            <button class="button" onclick="window.location.href='src/ui/test_model.html?model=V_4_6/model_tfjs_q8';">Test V_4_6 (q8)</button>
+            <button class="button" onclick="window.location.href='src/ui/test_model.html?model=V_4_7/model_tfjs';">Test V_4_7</button>
+            <button class="button" onclick="window.location.href='src/ui/test_model.html?model=V_4_10/model_tfjs';">Test V_4_10</button>
+        </div>
     </body>
 </html>

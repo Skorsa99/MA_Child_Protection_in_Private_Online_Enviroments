@@ -58,15 +58,15 @@ log_data_training(f"Started prozess for training Version: {version}")
 
 
 # - Config ------------
-EPOCHS        = 100 # 3 # 20
+EPOCHS        = 20
 BATCH_SIZE    = 64 # 32
-LR            = 5e-5 # 1e-5 # little small but lets give it a go
-MIN_LR        = 5e-9 # 5e-8
+LR            = 1e-5 # little small but lets give it a go
+MIN_LR        = 5e-8
 PATIENCE      = 2
 REDUCE_FACTOR = 0.3
 L2            = regularizers.l2(1e-4) # weight-decay strength
-IMG_SIZE      = 256
-E_S_PATIENCE  = 5
+IMG_SIZE      = 128 # 192 # 256
+E_S_PATIENCE  = 500 # basically turning it off
 # ---------------------
 
 

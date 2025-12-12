@@ -3487,3 +3487,25 @@
 2025-11-28 12:53:57 | Results:
 2025-11-28 12:53:58 |    Precision: 0.9577248692512512; Recall: 0.9577248692512512; Accuracy: 0.9577248692512512
 2025-11-28 12:53:59 | Model saved
+2025-12-11 17:33:02 | --------------------------------------------------------------------------
+2025-12-11 17:33:02 | Started prozess for training Version: V_4_10
+2025-12-11 17:33:02 | Settings:
+2025-12-11 17:33:02 | Epochs:                 20
+2025-12-11 17:33:02 | Batch Size:             64
+2025-12-11 17:33:02 | Lerningrate:            1e-05
+2025-12-11 17:33:02 | Minimum Lerningrat:     5e-08
+2025-12-11 17:33:02 | Patience:               2
+2025-12-11 17:33:02 | REduce Factor:          0.3
+2025-12-11 17:33:02 | L2:                     <tf_keras.src.regularizers.L2 object at 0x10500c2b0>
+2025-12-11 17:33:02 | Image Size:             192
+2025-12-11 17:33:02 | Loading Data with Seed: 1337
+2025-12-11 17:33:12 | Found 3 classes
+2025-12-11 17:33:14 | Total Batches: 3359 with a batchsize of: 64
+2025-12-11 17:33:17 | Train Batches: 2351
+2025-12-11 17:33:17 | Val Batches:   671
+2025-12-11 17:33:17 | Test Batches:  337
+2025-12-11 17:33:19 | Using Modelfunction: build_model_V4_transfer(n_classes=len(class_names))
+2025-12-12 02:39:46 | Loaded best model from models/V_4_10/best_model.keras
+2025-12-12 02:55:54 | Results:
+2025-12-12 02:55:54 |    Precision: 0.9546554088592529; Recall: 0.9546554088592529; Accuracy: 0.9546554088592529
+2025-12-12 02:55:55 | Model saved
