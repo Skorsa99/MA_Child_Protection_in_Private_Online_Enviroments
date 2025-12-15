@@ -11,6 +11,13 @@ const result_display_holder = document.getElementById('result-holder');
 const fpsCounterText = document.getElementById("fps-counter-text");
 const imageInput = document.getElementById('image-input');
 const canvasCtx = canvas.getContext('2d');
+
+// Allow selecting entire folders; the browser will flatten nested files into the FileList.
+if (imageInput) {
+    imageInput.setAttribute('webkitdirectory', '');
+    imageInput.setAttribute('directory', '');
+    imageInput.setAttribute('mozdirectory', '');
+}
 let IMG_SIZE = 256;
 const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
@@ -262,9 +269,26 @@ async function classifyFiles(files) {
     fpsCounterText.style.color = "black";
 }
 
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "bmp", "webp", "avif", "tif", "tiff", "heic", "heif"]);
+
+function isImageFile(file) {
+    if (!file) return false;
+    if (file.type) return file.type.startsWith("image/");
+    const lower = (file.name || "").toLowerCase();
+    const idx = lower.lastIndexOf(".");
+    return idx >= 0 && IMAGE_EXTS.has(lower.slice(idx + 1));
+}
+
+function collectImageFiles(fileList) {
+    return Array.from(fileList || []).filter(isImageFile);
+}
+
 imageInput.addEventListener('change', async (event) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
+    const files = collectImageFiles(event.target.files);
+    if (!files.length) {
+        console.warn("No image files found in selection.");
+        return;
+    }
 
     if (!model || !labels) await loadModelAndLabels();
 
