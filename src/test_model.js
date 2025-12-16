@@ -312,6 +312,9 @@ async function classifyFromCameraLoop() {
     if (!model || !labels) await loadModelAndLabels();
 
     resetFpsCounters();
+    
+    let FMA = [];
+    let FMA_status = "start";
 
     async function loop() {
         if (!videoStreamRunning) return;
@@ -362,6 +365,22 @@ async function classifyFromCameraLoop() {
             }
             frames = 0;
             lastTime = now;
+
+            if (FMA_status == "start") {
+                FMA_status = "collecting";
+            } else if (FMA_status == "collecting") {
+                FMA.push(fps)
+                console.log(FMA.length)
+
+                if (FMA.length == 300) {
+                    FMA_status = "completed";
+                    console.log(FMA);
+                    let min_FMA = Math.min(...FMA);
+                    let final_FMA = FMA.reduce((sum, n) => sum + n, 0) / FMA.length;
+                    let max_FMA = Math.max(...FMA);
+                    document.getElementById("five-min_average-text").innerText = `~${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
+                }
+            }
         }
 
         requestAnimationFrame(loop);
@@ -385,6 +404,9 @@ async function classifyFromCameraLoop_V2() {
     let firstLogDone = false;
 
     resetFpsCounters();
+
+    let FMA = [];
+    let FMA_status = "start";
 
     async function loop() {
         if (!videoStreamRunning) return;
@@ -439,6 +461,21 @@ async function classifyFromCameraLoop_V2() {
                 }
                 frames = 0;
                 lastTime = now;
+
+                if (FMA_status == "start") {
+                    FMA_status = "collecting";
+                } else if (FMA_status == "collecting") {
+                    FMA.push(fps)
+
+                    if (FMA.length == 300) {
+                        FMA_status = "completed";
+                        console.log(FMA);
+                        let min_FMA = Math.min(...FMA);
+                        let final_FMA = FMA.reduce((sum, n) => sum + n, 0) / FMA.length;
+                        let max_FMA = Math.max(...FMA);
+                        document.getElementById("five-min_average-text").innerText = `~${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
+                    }
+                }
             }
 
         }
