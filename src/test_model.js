@@ -23,7 +23,7 @@ const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
 const UI_UPDATE_MS = 150; // throttle UI/paint updates to avoid slowing raw throughput
 const BACKEND_PREFERENCE = ["webgpu", "webgl", "cpu"]; // prefer WebGPU → WebGL → CPU fallback
-const TESTSUIT_VERSION = "V_2_1";
+const TESTSUIT_VERSION = "V_2_2";
 const params = new URLSearchParams(window.location.search);
 const MODEL_TO_USE = params.get("model");
 
@@ -35,7 +35,7 @@ if (MODEL_TO_USE == 'V_4_10/model_tfjs') {
     console.log("Updated IMG_SIZE: " + IMG_SIZE);
 }
 
-document.getElementById('version-holder').innerHTML = "TestSuit_V: " + TESTSUIT_VERSION + " | Model_V: " + MODEL_TO_USE
+document.getElementById('version-holder').innerHTML = "TestSuit_V: " + TESTSUIT_VERSION + " | Model_V: " + MODEL_TO_USE;
 
 async function tensorData(tensor) {
     // Use async reads on WebGPU to avoid sync stalls; sync reads elsewhere
@@ -59,6 +59,7 @@ async function ensureBackend() {
         }
         await tf.ready();
         console.log("TF backend:", tf.getBackend());
+        document.getElementById('version-holder').innerHTML = "Model_V: " + MODEL_TO_USE + " | TF backend:", tf.getBackend();
     })();
     return backendReadyPromise;
 }
@@ -378,7 +379,7 @@ async function classifyFromCameraLoop() {
                     let min_FMA = Math.min(...FMA);
                     let final_FMA = FMA.reduce((sum, n) => sum + n, 0) / FMA.length;
                     let max_FMA = Math.max(...FMA);
-                    document.getElementById("five-min_average-text").innerText = `~${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
+                    document.getElementById("five-min_average-text").innerText = `${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
                 }
             }
         }
@@ -473,7 +474,7 @@ async function classifyFromCameraLoop_V2() {
                         let min_FMA = Math.min(...FMA);
                         let final_FMA = FMA.reduce((sum, n) => sum + n, 0) / FMA.length;
                         let max_FMA = Math.max(...FMA);
-                        document.getElementById("five-min_average-text").innerText = `~${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
+                        document.getElementById("five-min_average-text").innerText = `${min_FMA.toFixed(0)} | ${final_FMA.toFixed(0)} | ${max_FMA.toFixed(0)} 5MA`;
                     }
                 }
             }
