@@ -23,7 +23,7 @@ const INV_255 = 1 / 255;
 const CLASS_STATES = ["video-holder-unsafe", "video-holder-safe", "video-holder-empty"];
 const UI_UPDATE_MS = 150; // throttle UI/paint updates to avoid slowing raw throughput
 const BACKEND_PREFERENCE = ["webgpu", "webgl", "cpu"]; // prefer WebGPU → WebGL → CPU fallback
-const TESTSUIT_VERSION = "V_2_2";
+const TESTSUIT_VERSION = "V_2_3";
 const params = new URLSearchParams(window.location.search);
 const MODEL_TO_USE = params.get("model");
 
@@ -59,7 +59,7 @@ async function ensureBackend() {
         }
         await tf.ready();
         console.log("TF backend:", tf.getBackend());
-        document.getElementById('version-holder').innerHTML = "Model_V: " + MODEL_TO_USE + " | TF backend:", tf.getBackend();
+        document.getElementById('version-holder').innerHTML = "Model_V: " + MODEL_TO_USE + " | TF backend:" + tf.getBackend();
     })();
     return backendReadyPromise;
 }
