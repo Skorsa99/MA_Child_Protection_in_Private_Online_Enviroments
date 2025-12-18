@@ -1,0 +1,83 @@
+* no precautions where taken to improve performance. Real-Life scenario was kept by not stopping background
+  tasks or restarting devices before tests.
+* all tests run successively without long breaks, meaning that devices might not have cooled off completly
+  between runs. Thermally limited devices might suffer.
+* devices can have variations such as battery percentage, charge status, case / no case, device age
+
+- MacBook Pro 14inch M3Pro 36GB RAM
+	- V_4_6     = 137 | 140 | 141 5MA
+	- V_4_6_q8  = 132 | 139 | 140 5MA
+	- V_4_10    = 173 | 180 | 180 5MA
+	- V_4_11    = 176 | 191 | 247 5MA
+- iPhone 17pro 12GB RAM
+	- V_4_6     =  44 |  80 | 143 5MA
+	- V_4_6_q8  =  49 |  90 | 144 5MA
+	- V_4_10    =  51 | 101 | 192 5MA
+	- V_4_11    =  73 | 162 | 278 5MA
+- iPhone 12mini 4GB RAM
+	- V_4_6     =  21 |  31 |  38 5MA
+	- V_4_6_q8  =  19 |  29 |  38 5MA
+	- V_4_10    =  29 |  36 |  51 5MA
+	- V_4_11    =  42 |  48 |  52 5MA
+- iPad Pro 2018 11inch 1. Generation (FTXN2FD/A) 4GB RAM
+	- V_4_6     =  28 |  30 |  30 5MA
+	- V_4_6_q8  =  23 |  27 |  30 5MA
+	- V_4_10    =  32 |  39 |  42 5MA
+	- V_4_11    =  48 |  53 |  60 5MA
+- HP Pavilion Laptop 15-cc1xx Intel Core i5-8250U CPU @ 1.6GHz Intel UHD Graphics 620 and NVIDIA GeForce940MX
+  16GB RAM
+	- V_4_6     =  12 |  16 |  17 5MA
+	- V_4_6_q8  =  14 |  16 |  18 5MA
+	- V_4_10    =  16 |  20 |  24 5MA
+	- V_4_11    =  30 |  36 |  40 5MA
+- 2016 MacBook Pro 13inch Intel i5 2,3Ghz Dual-Core 8GB RAM
+	- V_4_6     =  14 |  21 |  23 5MA
+	- V_4_6_q8  =  17 |  21 |  22 5MA
+	- V_4_10    =  17 |  21 |  23 5MA
+	- V_4_11    =   9 |  14 |  19 5MA
+- Samsung Galaxy S10e
+	- V_4_6     =   8 |  11 |  13 5MA
+	- V_4_6_q8  =   7 |  11 |  14 5MA
+	- V_4_10    =   8 |  10 |  12 5MA
+	- V_4_11    =   9 |  12 |  13 5MA
+- Samsung Galaxy S6 edge 3GB RAM
+	- V_4_6     =   2 |   2 |   2 5MA
+	- V_4_6_q8  =   2 |   2 |   2 5MA
+	- V_4_10    =   3 |   3 |   3 5MA
+	- V_4_11    =   3 |   3 |   3 5MA
+- HP Laptop 17-cn3xxx 13th Gen Intel Core i5-1334U 1300MHz 10 core Intel Iris Xe Graphics 8GB RAM
+	- V_4_6     =  25 |  42 |  48 5MA
+	- V_4_6_q8  =  33 |  46 |  49 5MA
+	- V_4_10    =  36 |  55 |  63 5MA
+	- V_4_11    =  29 |  80 |  87 5MA
+- iPad Air M2 11inch 8GB RAM
+	- V_4_6     =  30 |  39 |  43 5MA
+	- V_4_6_q8  =  36 |  39 |  42 5MA
+	- V_4_10    =  39 |  43 |  45 5MA
+	- V_4_11    =  42 |  45 |  47 5MA
+- iPhone 11 Pro Max 4 GB RAM
+	- V_4_6     =  24 |  26 |  29 5MA
+	- V_4_6_q8  =  22 |  25 |  29 5MA
+	- V_4_10    =  23 |  30 |  41 5MA
+	- V_4_11    =  13 |  39 |  50 5MA
+- iPhone 11 Pro 4 GB RAM
+	- V_4_6     =  21 |  23 |  26 5MA
+	- V_4_6_q8  =  21 |  23 |  27 5MA
+	- V_4_10    =  21 |  23 |  27 5MA
+	- V_4_11    =  23 |  27 |  31 5MA
+- iPhone 14 Pro 6 GB RAM
+	- V_4_6     =  13 |  17 |  44 5MA
+	- V_4_6_q8  =  15 |  17 |  43 5MA
+	- V_4_10    =  19 |  22 |  50 5MA
+	- V_4_11    =  23 |  27 |  41 5MA
+- iPhone 6s 2GB RAM (likely overheated drastically [got really hot])
+	- V_4_6     =   7 |   9 |   9 5MA
+	- V_4_6_q8  =   4 |   6 |   9 5MA
+	- V_4_10    =   3 |   4 |   6 5MA
+	- V_4_11    =   5 |   8 |   9 5MA
+	- V_4_11    =   7 |  11 |  13 5MA (after cooling down a bit)
+- iPhone 16 Pro 8GB RAM (also seems to be thermal throttling hard)
+	- V_4_6     =  22 |  34 |  87 5MA
+	- V_4_6_q8  =  24 |  32 |  97 5MA
+	- V_4_10    =  33 |  46 | 127 5MA
+	- V_4_11    =   4 |  98 | 202 5MA
