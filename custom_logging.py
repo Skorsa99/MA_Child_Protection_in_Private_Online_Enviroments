@@ -226,13 +226,12 @@ def log_extensive_testing(file_path, message):
     
 
 if __name__ == "__main__":
-    arg_dir = "data/reddit_pics/unsafe"
-    
-    image_tally_v2(arg_dir, "unsafe")
-    arg_dir = "data/reddit_pics/safe"
+    # arg_dir = "data/reddit_pics/unsafe"
+    # image_tally_v2(arg_dir, "unsafe")
+    # arg_dir = "data/reddit_pics/safe"
+    # image_tally_v2(arg_dir, "safe")
+    # arg_dir = "data/reddit_pics/empty"
+    # image_tally_v2(arg_dir, "empty")
 
-    image_tally_v2(arg_dir, "safe")
-    arg_dir = "data/reddit_pics/empty"
-
-    image_tally_v2(arg_dir, "empty")
-    # print(f"Found: {count_images(arg_dir)} images") # 4038
+    arg_dir = "data/deleted_pics/duplicates"
+    print(f"Found: {count_images(arg_dir)} images")
