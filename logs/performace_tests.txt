@@ -1,4 +1,4 @@
-* no precautions where taken to improve performance. Real-Life scenario was kept by not stopping background
+* no precautions were taken to improve performance. Real-Life scenario was kept by not stopping background
   tasks or restarting devices before tests.
 * all tests run successively without long breaks, meaning that devices might not have cooled off completly
   between runs. Thermally limited devices might suffer.
