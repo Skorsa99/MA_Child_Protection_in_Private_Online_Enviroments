@@ -3,6 +3,7 @@
 * all tests run successively without long breaks, meaning that devices might not have cooled off completly
   between runs. Thermally limited devices might suffer.
 * devices can have variations such as battery percentage, charge status, case / no case, device age
+* 5MA scores show minimum, average, and maximum FPS values over a 5-minute timeframe
 
 - MacBook Pro 14inch M3Pro 36GB RAM
 	- V_4_6     = 137 | 140 | 141 5MA
